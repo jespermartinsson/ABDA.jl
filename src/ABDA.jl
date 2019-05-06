@@ -1,8 +1,6 @@
 module ABDA
 
-include("Stats.jl")
-using .Stats
-
+include("stats.jl")
 export slice_sample, fslice_sample
 
 

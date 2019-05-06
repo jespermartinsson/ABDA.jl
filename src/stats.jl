@@ -1,8 +1,4 @@
-module Stats
-
 using LinearAlgebra, Statistics, Random
-
-export Samples, slice_sample, fslice_sample
 
 mutable struct Samples
     thetas::Array{Float64}
@@ -20,7 +16,7 @@ end
 
 
 
-function slice_sample(x0, w, log_pdf; N = 1000, m = 1e2, printing = true)
+function slice_sample(x0, w, log_pdf, N; m = 1e2, printing = true)
     # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
     D = length(x0)
     xs = zeros(D,N)
@@ -94,7 +90,7 @@ end
 
 
 
-function fslice_sample(x0, C, log_pdf; N = 1000, m = 1e2, printing = true)
+function fslice_sample(x0, C, log_pdf, N; m = 1e2, printing = true)
     # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
     lam,E = eigen(C)
     w = sqrt.(abs.(lam))
@@ -209,5 +205,3 @@ function custom_slice(x0_list, w_list, log_pdf; N = 20000, m = 1e2, printing = t
 
 end
 
-
-end # end module

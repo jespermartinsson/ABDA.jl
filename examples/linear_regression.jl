@@ -84,12 +84,12 @@ log_posterior(θ) = log_likelihood(θ,y,x) + log_prior(θ)
 
 
 ## sample the posterior
-n_burn_in  = 500
-θs, lps = slice_sample(copy(θ_init), ones(length(θ_init)), log_posterior; N = 10_000 + n_burn_in)
+N_burn_in  = 500
+θs, lps = slice_sample(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000 + N_burn_in)
 
 # remove "burn in" phase
-θs= θs[:,n_burn_in+1:end]
-lps = lps[n_burn_in+1:end] 
+θs= θs[:,N_burn_in+1:end]
+lps = lps[N_burn_in+1:end] 
 
 # plot mcmc chain
 figure()
@@ -122,5 +122,5 @@ for i in 1:100:n
 end
 
 # plot estimate
-plot(x,y0,"r-",lw=2)
-plot(x,y_est,"b-",lw=2)
+plot(x,y_est,"b-",lw=2,alpha=0.5)
+plot(x,y0,"r-",lw=2,alpha=1.0)
