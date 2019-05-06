@@ -85,7 +85,7 @@ log_posterior(θ) = log_likelihood(θ,y,x) + log_prior(θ)
 
 ## sample the posterior
 N_burn_in  = 500
-θs, lps = slice_sample(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000 + N_burn_in)
+θs, lps = sample(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000, N_burn_in)
 
 # remove "burn in" phase
 θs= θs[:,N_burn_in+1:end]

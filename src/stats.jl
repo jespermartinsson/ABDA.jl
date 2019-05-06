@@ -170,38 +170,22 @@ end
 
 
 
-function custom_slice(x0_list, w_list, log_pdf; N = 20000, m = 1e2, printing = true, N_chains=10)
-    D = length(x0_list[1])
-    xs_list = []
-    lp_list = []
-    max_lp_list = []
-    for (x0, w) in zip(x0_list, w_list)
-        try
-            xs, lp = slice_sample(x0, w, log_pdf, N = 500, m = m, printing = false)
-            ind = 201
-            push!(xs_list,xs[:,ind:end])
-            push!(lp_list,lp[ind:end])
-            push!(max_lp_list,maximum(lp[ind:end]))
-        catch err
-            println(err)
-        end
+function sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
+    if N_burn_in == nothing
+        N_burn_in = max(round(Int(N*0.1)),100)
     end
-    #return xs_list, lp_list
+    # first run
+    xs, lp = slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = false)
+    x0 = xs[:,argmax(lp)]
+    w = std(xs,dims=2)
+    
+    # second run
+    xs, lp = slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = false)
 
-    # TODO: Try a different alternative using median and a median based standard error
-    s = Float64.(maximum(vcat(std(max_lp_list),5.0))) # TODO: Investigate the magic 5.0
-    ind = findall(max_lp_list .> maximum(max_lp_list) - s)
-
-    xs = Array{Float64,2}(undef,D,0)
-    lp = Array{Float64,1}(undef,0)
-    for i in ind
-        xs = hcat(xs,xs_list[i])
-        lp = vcat(lp,lp_list[i])
-    end
 
     C = cov(xs')
     x0 = xs[:,argmax(lp)]
-    return fslice_sample(x0, C, log_pdf; N = N, m = m, printing = printing)
+    return fslice_sample(x0, C, log_pdf, N; m = m, printing = printing)
 
 end
 

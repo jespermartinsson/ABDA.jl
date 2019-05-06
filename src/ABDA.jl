@@ -1,7 +1,7 @@
 module ABDA
 
 include("stats.jl")
-export slice_sample, fslice_sample
+export slice_sample, fslice_sample, sample
 
 
 end # module
