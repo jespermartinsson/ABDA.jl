@@ -1,7 +1,7 @@
 using ABDA
 using Statistics
 using PyPlot
-close("all")
+#close("all")
 
 
 
@@ -30,7 +30,7 @@ if false
     stem(1:4,ϕ,"r")
 end
 
-function softmax(λs)
+function softmax(λs::Union{Vector{Float64},Array{Float64,2}})
     L = size(λs)
     if length(L) == 1
         exp_λs = exp.(λs)
@@ -47,14 +47,9 @@ end
 
 
 
-# linear model
-function model(β,X)
-    return X*β
-end
-
 
 ## create a toy regression example
-n = 1000
+n = 200
 x1 = -2 .+ rand(n).*4
 x2 = -2 .+ rand(n).*4
 
@@ -100,14 +95,14 @@ axis([minimum(x1),maximum(x1),minimum(x2),maximum(x2)].*1.3)
 
 
 # log-likelihood categorical
-function log_likelihood(θ,y,X)
+function log_likelihood(θ::Vector{Float64},y::Vector{Float64},X::Array{Float64,2})
     β = reshape(θ,(3,3))
     n = length(y)
     λs = hcat(ones(n),X*β)
     ϕs = softmax(λs)
     llh = 0.0
     for i in 1:n
-        llh += sum((y[i] .== 1:4).*log.(ϕs[i,:]))
+        llh += sum(float.(y[i] .== 1:4).*log.(ϕs[i,:]))
     end
     return llh
 end
