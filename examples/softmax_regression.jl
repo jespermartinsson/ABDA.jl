@@ -49,7 +49,7 @@ end
 
 
 ## create a toy regression example
-n = 200
+n = 1000
 x1 = -2 .+ rand(n).*4
 x2 = -2 .+ rand(n).*4
 
@@ -60,7 +60,7 @@ x2 = -2 .+ rand(n).*4
 β3 = [2, 1, 5.0]
 β4 = [0, 10, 3.0]
 
-β = hcat(β2,β3,β4)
+β = hcat(β2,β3,β4).*0.5
 X = hcat(ones(n),x1,x2) 
 
 λs = hcat(zeros(n), X*β)
@@ -126,7 +126,7 @@ log_posterior(θ) = log_likelihood(θ,y,X) + log_prior_beta(θ)
 θs = β[:]
 ## sample the posterior
 N_burn_in  = 500
-θs_samp, lps= sample(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000, N_burn_in)
+θs_samp, lps = sample(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000, N_burn_in)
 
 
 # remove "burn in" phase
@@ -138,7 +138,7 @@ lps = lps[N_burn_in+1:end]
 # plot mcmc chain
 figure()
 for n=1:9
-subplot(9,2,2*n-1), plot(θs_samp[n,:]), plot(1:length(θs_samp[n,:]),θs[n]*ones(length(θs_samp[n,:])))
-subplot(9,2,2*n), hist(θs_samp[n,:],1000), plot(θs[n],0,"ro")
+    subplot(9,2,2*n-1), plot(θs_samp[n,:]), plot(1:length(θs_samp[n,:]),θs[n]*ones(length(θs_samp[n,:])))
+    subplot(9,2,2*n), hist(θs_samp[n,:],1000), plot(θs[n],0,"ro")
 end
 tight_layout()
