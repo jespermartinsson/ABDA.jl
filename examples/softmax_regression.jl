@@ -108,18 +108,12 @@ function log_likelihood(θ::Vector{Float64},y::Union{Vector{Float64},Vector{Int6
 end
     
 # log-prior
-function log_prior(θ)
-    β = θ[1:end-1]
-    σ = θ[end]
-    return log_prior_beta(β) + log_prior_sigma(σ)    
-end
-
-function log_prior_beta(β)
+function log_prior(β)
     return -0.5*β'*β/10^2
 end
 
 # log posterior
-log_posterior(θ) = log_likelihood(θ,y,X) + log_prior_beta(θ)
+log_posterior(θ) = log_likelihood(θ,y,X) + log_prior(θ)
 
 
 
