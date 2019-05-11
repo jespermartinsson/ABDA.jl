@@ -21,7 +21,7 @@ function sample_cat(ϕ,N=1)
 end
 
 if false
-    # test multinomial
+    # test sampling from categorical
     ϕ = [1,2,4,5]
     ϕ = ϕ/sum(ϕ)
     y_samp = sample_cat(ϕ,100_000)
@@ -95,7 +95,7 @@ axis([minimum(x1),maximum(x1),minimum(x2),maximum(x2)].*1.3)
 
 
 # log-likelihood categorical
-function log_likelihood(θ::Vector{Float64},y::Vector{Float64},X::Array{Float64,2})
+function log_likelihood(θ::Vector{Float64},y::Union{Vector{Float64},Vector{Int64}},X::Array{Float64,2})
     β = reshape(θ,(3,3))
     n = length(y)
     λs = hcat(ones(n),X*β)
