@@ -1,4 +1,3 @@
-using LinearAlgebra, Statistics, Random, Printf
 
 mutable struct Samples
     thetas::Array{Float64}
@@ -409,11 +408,6 @@ function mcse(x)
   return std(x,2)./ess(x)
 end
 
-
-#using PyCall
-#@pyimport numpy as np
-
-using PyPlot
 
 function hist(x,bins=0;color = "k",baseline = 0)
     if bins == 0

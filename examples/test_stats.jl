@@ -66,7 +66,7 @@ function log_prior(θ)
 end
 
 function log_prior_beta(β)
-    return 0.0
+    return 0.0 # no prior 
 end
 
 function log_prior_sigma(σ)
@@ -88,7 +88,7 @@ log_posterior(θ) = log_likelihood(θ,y,x) + log_prior(θ)
 
 using BenchmarkTools
 ## sample the posterior
-# @btime θs, lps = ABDA.slice_sample_(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000)
+# @btime θs, lps = ABDA.slice_sample_original(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000)
 # @btime θs, lps = ABDA.slice_sample(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000)
 θs, lps = ABDA.slice_sample(copy(θ_init), ones(length(θ_init)), log_posterior, 10_000)
 

@@ -20,9 +20,9 @@ function log_likelihood(θ::Float64,y::Union{Vector{Float64},Vector{Int64}})
 end
 
 # log prior
-function log_beta(x,α,β)
-    if 0<x<1
-        return (α-1)*log(x) + (β-1)*log(1-x)
+function log_beta(θ,α,β)
+    if 0<θ<1
+        return (α-1)*log(θ) + (β-1)*log(1-θ)
     else
         return -Inf
     end
