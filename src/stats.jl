@@ -16,13 +16,6 @@ end
 
 
 
-
-
-
-
-
-
-
 # this is the original slice sample from referece 
 # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
 function slice_sample_original(x0, w, log_pdf, N; m = 1e2, printing = false)
