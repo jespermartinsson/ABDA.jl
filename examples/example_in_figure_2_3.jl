@@ -64,6 +64,7 @@ subplot(212),
 bar(1:4,fr,label=raw"est. $p(\theta|y)$ based on mcmc")
 plot(1:4,pr,"ok",label=raw"true $p(\theta|y)$")
 
+
 x = -1:0.01:6
 for k in 1:4
     l = exp.(log_likelihood.(k,x))
