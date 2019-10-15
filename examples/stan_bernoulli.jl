@@ -24,6 +24,6 @@ ProjDir = "."
 rc, chns, cnames = stan(stanmodel, bernoullidata, ProjDir, CmdStanDir=CMDSTAN_HOME)
 
 
-describe(chns)
+#describe(chns)
 theta = get_params(chns).theta[:]
 plot(chns)
