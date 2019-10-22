@@ -83,7 +83,7 @@ function m_sample(x0, sigma, log_pdf, N)
 
 
     logu_samples = log.(rand(N)) # sample uniform
-    prop_samples = sigma*randn(D,N) # sample proposal
+    prop_samples = sigma*randn(D,N) # sample proposal N(0,sigma). Use sigma = sqrtm(C) if multivariate, where C is the covariace matrix
 
     for k in 1:D
         x[k,1] = x0[k]
@@ -131,9 +131,9 @@ if any(example .== "1D")
         end
     end
 
-    # for my samplers to work in more dimensions then the pdf must be defined with array as input parameter.
-    # for the 1D case it is an array with a single element x[1]
-    log_pdf(x) = log_pdf_1D(x[1])
+    # My samplers work in multi dimensions and the pdf must be defined with an array as input parameter.
+    # For the 1D special case the input must also be an array with a single element x[1].
+    log_pdf(x) = log_pdf_1D(x[1]) # define log_pdf with array as input. 
 
 
     N = 10_000 # number of mcmc samples
@@ -146,8 +146,6 @@ if any(example .== "1D")
     # try slice
     w = [10.0] # stepping out value
     thetas_s, log_pdfs_s = slice_sample(x0, w, log_pdf, N)
-
-
 
     N2 = 500 # show only N2 samples in chain
     xl = [-2*pi, 2*pi] # x limits
@@ -185,7 +183,6 @@ if any(example .== "2D")
     thetas_s, log_pdfs_s = slice_sample(x0, w, log_pdf, N)
 
 
-
     N2 = 500 # show only N2 samples in chain
     xl = [-2*pi, 2*pi] # x limits
     figure()
@@ -199,7 +196,6 @@ if any(example .== "2D")
     subplot(325), hist(thetas_m[2,:],Int(round(sqrt(N))),alpha=0.6), xlim(xl), xlabel(raw"$\theta_{\mathrm{metropolis}}$")
     subplot(326), hist(thetas_s[1,:],Int(round(sqrt(N))),alpha=0.6), xlim(xl), xlabel(raw"$\theta_{\mathrm{slice}}$")
     subplot(326), hist(thetas_s[2,:],Int(round(sqrt(N))),alpha=0.6), xlim(xl), xlabel(raw"$\theta_{\mathrm{slice}}$")
-
 
 end
 
