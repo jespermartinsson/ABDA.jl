@@ -116,12 +116,11 @@ end
 
 close("all")
 
-# present casses below
+# define what examples to run
 example = ["1D", "2D"]
 
+
 if any(example .== "1D")
-
-
     # create a strange pdf
     function log_pdf_1D(x)
         if -2*pi < x < 2*pi
@@ -131,8 +130,8 @@ if any(example .== "1D")
         end
     end
 
-    # My samplers work in multi dimensions and the pdf must be defined with an array as input parameter.
-    # For the 1D special case the input must also be an array with a single element x[1].
+    # My samplers works only in multi dimensions and the pdf must be defined with an array as input parameter.
+    # For the 1D special case the input must also be an array with a single element x[1]. So we do the trick below:
     log_pdf(x) = log_pdf_1D(x[1]) # define log_pdf with array as input. 
 
 
@@ -158,12 +157,12 @@ if any(example .== "1D")
 end
 
 if any(example .== "2D")
-
+    
     using LinearAlgebra
     # create a strange pdf
     function log_pdf(x)
         if all(abs.(x) .< 2*pi)
-            return log(sin(x[1])^2/(1+x[1]^2)) + log(sin(x[2])^2/(1+x[2]^2))
+            return sum(log.(sin.(x).^2 ./(1 .+x.^2)))
         else
             return -Inf
         end
