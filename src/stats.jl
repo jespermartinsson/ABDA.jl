@@ -275,6 +275,14 @@ function sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printi
 end
 
 
+
+# try eliptical slice sample https://arxiv.org/abs/1001.0175
+# https://www.youtube.com/watch?v=HfzyuD9_gmk
+function elip_sample()
+    return 
+end
+
+
 function hdi(theta_samp,alpha=0.05)
     cred_mass = 1.0-alpha
     ci = zeros(2)
@@ -358,7 +366,7 @@ end
 
 # https://en.wikipedia.org/wiki/Correlation_coefficient
 function acov(x,k=0)
-  zx = x-mean(x)
+  zx = x .- mean(x)
   zxk = zx[k+1:end]
   zyk = zx[1:end-k]
   return sum(zxk.*zyk)/sqrt(sum(zxk.^2)*sum(zxk.^2))
@@ -402,19 +410,21 @@ function mcse(x)
 end
 
 
-function hist(x,bins=0;color = "k",baseline = 0)
+function hist(x,bins=0;color = "k",baseline = 0, label=nothing)
     if bins == 0
         bins=Int(round(sqrt(length(x))))
     end
     ci = hdi(x)
     #fr, bins = np.histogram(x,bins,normed = true)
-    fr, bins = PyPlot.hist(x,bins;density = true)
+    #fr, bins = PyPlot.hist(x,bins;density = true, show=false)
+    hist_data = fit(Histogram,x,nbins=bins)
+    fr,bins = hist_data.weights, hist_data.edges[1]
     #plt["hist"](mu_y_samp[i,:],100,alpha=0.5)
     xv,yv = get_mystep(bins,fr)
-    fill_between(xv,yv .+ baseline,baseline,color=color,alpha=0.25)
+    fill_between(xv,yv .+ baseline, baseline, color=color,alpha=0.25,label=label)
 
     ind = (xv.>ci[1]).*(xv.<ci[2])
-    fill_between(xv[ind],yv[ind] .+ baseline,baseline,color=color,alpha=0.25)
+    fill_between(xv[ind],yv[ind] .+ baseline, baseline, color=color,alpha=0.25)
     plot(ci[[1,1]],[0,yv[ind][1]] .+ baseline,color*"--")
     plot(ci[[end,end]],[0,yv[ind][end]] .+ baseline,color*"--")
 
