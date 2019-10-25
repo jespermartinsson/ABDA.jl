@@ -57,7 +57,7 @@ else
     N2 = 1000
     subplot(3,1,1), plot(θy_samp[1,1:N2],1:N2,".r-",alpha = 0.25, label = raw"$\theta^{\{i\}}|y$")
     subplot(3,1,1), plot(θz_samp[1,1:N2],1:N2,".b-",alpha = 0.25, label = raw"$\theta^{\{i\}}|z$")
-    title("N: $(size(θy_samp,2)), ESS: $(ABDA.ess(θy_samp[1,:]))")
+    title("N: $(size(θy_samp,2)), ESS: $(ABDA.ess(θy_samp)[1]), MCSE: $(ABDA.mcse(θy_samp)[1])")
     ylabel(raw"$i$ (sample index)")
     xlabel(raw"$\theta^{\{i\}}$")
     legend()

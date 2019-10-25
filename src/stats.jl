@@ -406,7 +406,7 @@ end
 # on the scale of the parameter value. In Figure 7.11, for example, despite the small ESS,
 # the mean of the posterior appears to be estimated very stably.
 function mcse(x)
-  return std(x,2)./ess(x)
+  return std(x,dims=2)./sqrt.(ess(x))
 end
 
 
