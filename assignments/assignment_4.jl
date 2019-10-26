@@ -1,5 +1,7 @@
 using ABDA
 using PyPlot
+using Random
+
 close("all")
 
 # data
@@ -30,26 +32,23 @@ function log_beta(θ,α,β)
     end
 end
 
-# log posterior
-log_posterior_y(θ) = log_likelihood(θ[1],y) + log_beta(θ[1],1,1)
-log_posterior_z(θ) = log_likelihood(θ[1],z) + log_beta(θ[1],1,1)
 
 
 
-## sample the posterior
-θ_init = [0.5]
-N_burn_in  = 500
-θy_samp, lpsy = sample(copy(θ_init), ones(length(θ_init)), log_posterior_y, 1_000_000, N_burn_in)
-θz_samp, lpsz = sample(copy(θ_init), ones(length(θ_init)), log_posterior_z, 1_000_000, N_burn_in)
+if false # independent version
+    Random.seed!(1)
+    # log posterior
+    log_posterior_y(θ) = log_likelihood(θ[1],y) + log_beta(θ[1],1,1)
+    log_posterior_z(θ) = log_likelihood(θ[1],z) + log_beta(θ[1],1,1)
 
-# plot mcmc chain
-if false
-    figure()
-    subplot(1,2,1), plot(θ_samp[1,:])
-    subplot(1,2,2), hist(θ_samp[1,:],100)
-    tight_layout()
 
-else
+    ## sample the posterior
+    θ_init = [0.5]
+    N_burn_in  = 500
+    θy_samp, lpsy = sample(copy(θ_init), ones(length(θ_init)), log_posterior_y, 1_000_000, N_burn_in)
+    θz_samp, lpsz = sample(copy(θ_init), ones(length(θ_init)), log_posterior_z, 1_000_000, N_burn_in)
+
+    # plot mcmc chain
     pr1 = sum(θy_samp[1,:] .> 0.5)/size(θy_samp,2)
     pr2 = sum(θy_samp[1,:] .> θz_samp[1,:])/size(θy_samp,2)
 
@@ -57,22 +56,59 @@ else
     N2 = 1000
     subplot(3,1,1), plot(θy_samp[1,1:N2],1:N2,".r-",alpha = 0.25, label = raw"$\theta^{\{i\}}|y$")
     subplot(3,1,1), plot(θz_samp[1,1:N2],1:N2,".b-",alpha = 0.25, label = raw"$\theta^{\{i\}}|z$")
-    title("N: $(size(θy_samp,2)), ESS: $(ABDA.ess(θy_samp)[1]), MCSE: $(ABDA.mcse(θy_samp)[1])")
+    title("N: $(size(θy_samp,2)), ESS: $(round(Int,ABDA.ess(θy_samp)[1])), MCSE: $(ABDA.mcse(θy_samp)[1])", fontsize = 10)
     ylabel(raw"$i$ (sample index)")
     xlabel(raw"$\theta^{\{i\}}$")
     legend()
     subplot(3,1,2), ABDA.hist(θy_samp[1,:],100; color = "r", label=raw"$p(\theta|y)$")
     subplot(3,1,2), ABDA.hist(θz_samp[1,:],100; color = "b", label=raw"$p(\theta|z)$")
-    title(raw"$Pr\{\theta_y>\theta_z\}$: "*"$(pr1)")
+    title(raw"$Pr\{\theta_y>\theta_z\}$: "*"$(pr1)", fontsize = 10)
     ylabel(raw"posterior")
     xlabel(raw"$\theta$")
     legend()
     subplot(3,1,3), ABDA.hist(θy_samp[1,:] .- θz_samp[1,:],100; color = "b", label=raw"$p(\delta\theta|y,z)$")
-    title(raw"$Pr\{\theta_y>\theta_z\}$: "*"$(pr2)")
+    title(raw"$Pr\{\theta_y>\theta_z\}$: "*"$(pr2)", fontsize = 10)
     ylabel(raw"posterior")
     xlabel(raw"$\delta\theta$")
     legend()
     tight_layout()
 end
+
+if true # joint version
+    Random.seed!(1)
+    # log posterior
+    log_posterior(θ) = log_likelihood(θ[1],y) + log_beta(θ[1],1,1) + log_likelihood(θ[2],z) + log_beta(θ[2],1,1)
+
+    ## sample the posterior
+    θ_init = [0.5, 0.5]
+    N_burn_in  = 500
+    θ_samp, lps = sample(copy(θ_init), ones(length(θ_init)), log_posterior, 1_000_000, N_burn_in)
+
+    # plot mcmc chain
+    pr1 = sum(θ_samp[1,:] .> 0.5)/size(θ_samp,2)
+    pr2 = sum(θ_samp[1,:] .> θ_samp[2,:])/size(θ_samp,2)
+
+    figure()
+    N2 = 1000
+    subplot(3,1,1), plot(θ_samp[1,1:N2],1:N2,".r-",alpha = 0.25, label = raw"$\theta^{\{i\}}|y$")
+    subplot(3,1,1), plot(θ_samp[2,1:N2],1:N2,".b-",alpha = 0.25, label = raw"$\theta^{\{i\}}|z$")
+    title("N: $(size(θ_samp,2))\nESS: $(round.(Int,ABDA.ess(θ_samp)))\nMCSE: $(ABDA.mcse(θ_samp))", fontsize = 10)
+    ylabel(raw"$i$ (sample index)")
+    xlabel(raw"$\theta^{\{i\}}$")
+    legend()
+    subplot(3,1,2), ABDA.hist(θ_samp[1,:],100; color = "r", label=raw"$p(\theta|y)$")
+    subplot(3,1,2), ABDA.hist(θ_samp[2,:],100; color = "b", label=raw"$p(\theta|z)$")
+    title(raw"$Pr\{\theta_y>\theta_z\}$: "*"$(pr1)", fontsize = 10)
+    ylabel(raw"posterior")
+    xlabel(raw"$\theta$")
+    legend()
+    subplot(3,1,3), ABDA.hist(θ_samp[1,:] .- θ_samp[2,:],100; color = "b", label=raw"$p(\delta\theta|y,z)$")
+    title(raw"$Pr\{\theta_y>\theta_z\}$: "*"$(pr2)", fontsize = 10)
+    ylabel(raw"posterior")
+    xlabel(raw"$\delta\theta$")
+    legend()
+    tight_layout()
+end
+
 
 
