@@ -3,7 +3,7 @@ using Printf, PyPlot
 using LinearAlgebra, Statistics, Random, StatsBase
 
 include("stats.jl")
-export slice_sample, fslice_sample, sample
+export slice_sample, fslice_sample, sample, block_sample
 
 
 end # module

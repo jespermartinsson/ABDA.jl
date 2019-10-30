@@ -82,7 +82,7 @@ if true # joint version
     ## sample the posterior
     θ_init = [0.5, 0.5]
     N_burn_in  = 500
-    θ_samp, lps = sample(copy(θ_init), ones(length(θ_init)), log_posterior, 1_000_000, N_burn_in)
+    θ_samp, lps = sample(copy(θ_init), ones(length(θ_init)), log_posterior, 1_000_000, N_burn_in; m = 1e6)
 
     # plot mcmc chain
     pr1 = sum(θ_samp[1,:] .> 0.5)/size(θ_samp,2)

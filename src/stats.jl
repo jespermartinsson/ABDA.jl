@@ -169,13 +169,46 @@ end
 
 
 
-
-
-
-
-
-
 function fslice_sample(x0, C, log_pdf, N; m = 1e2, printing = true)
+    # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
+    lam,E = eigen(C)
+    w = sqrt.(abs.(lam))
+
+    D = length(x0)
+    xs = zeros(D,N)
+    lp = zeros(N)
+
+    # pre-allocate
+    l = similar(x0)
+    r = similar(x0)
+    x1 = similar(x0)
+
+
+    evals = 0
+    log_pdf_x1 = 0.0
+    for i in 1:N
+        if printing && (mod(i,round(N/10))==0)
+            print(Int(round(i/N*10)))
+        end
+        l .= x0
+        r .= x0
+        x1 .= x0
+        log_pdf_x1 = fslice!(x0,l,r,x1,log_pdf,log_pdf_x1,w,E;m=m)
+        xs[:,i] = x1
+        lp[i] = log_pdf_x1
+    end
+    return xs, lp
+end
+
+
+
+
+
+
+
+
+
+function fslice_sample_original(x0, C, log_pdf, N; m = 1e2, printing = true)
     # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
     lam,E = eigen(C)
     w = sqrt.(abs.(lam))
@@ -260,12 +293,12 @@ function sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printi
         N_burn_in = max(round(Int(N*0.1)),100)
     end
     # first run
-    xs, lp = slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = false)
+    xs, lp = slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = printing)
     x0 = xs[:,argmax(lp)]
     w = std(xs,dims=2)
     
     # second run
-    xs, lp = slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = false)
+    xs, lp = slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = printing)
 
 
     C = cov(xs')
@@ -276,12 +309,160 @@ end
 
 
 
-# try eliptical slice sample https://arxiv.org/abs/1001.0175
-# https://www.youtube.com/watch?v=HfzyuD9_gmk
-function elip_sample()
-    return 
+
+# https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
+function block_slice_sample(x0, w, log_pdf, N; m = 1e2, printing = false)
+    # number of blocks
+    B = length(x0)
+
+    # initiate chain
+    xs = []
+    for b in 1:B
+        push!(xs,Array{Float64,2}(undef,(length(x0[b]),N)))
+        xs[b][:,1] .= x0[b]
+    end 
+
+    lp = zeros(N)
+    
+    evals = 0
+    log_pdf_x1 = log_pdf(x0)
+    lp[1] = log_pdf_x1 
+    for i in 2:N
+        lp[i] = lp[i-1]
+        if printing && (mod(i,round(N/10))==0)
+            print(Int(round(i/N*10)))
+        end
+        l = 1*x0
+        r = 1*x0
+        x1 = 1*x0
+        for b in 1:B
+            log_pdf_x1_b = log_pdf(x1[b],b)
+            lp[i] -= log_pdf_x1_b
+            log_pdf_x1_b = slice!(x0[b], l[b], r[b], x1[b], (x)->log_pdf(x,b), log_pdf_x1_b, w[b]; m=m)
+            xs[b][:,i] .= x0[b]
+            lp[i] += log_pdf_x1_b
+        end
+    end
+    return xs, lp
 end
 
+
+
+
+
+
+
+function fslice!(x0, l, r, x1, log_pdf, log_pdf_x1, w, E; m = 1e2)
+    D = length(x0)
+    for d in randperm(D)
+        lu = log(rand())
+        u1 = rand()
+        v1 = rand()
+
+        y = log_pdf_x1 + lu
+        evals = 0
+
+        wd = w[d]*E[:,d]
+        l .= x0 .- u1*wd
+        r .= l .+ wd
+
+        j = floor(m*v1)
+        k = (m-1)-j
+        while ((y < log_pdf(l)) && (j>0))
+            evals += 1
+            l .= l .- wd
+            j -= 1
+        end
+        while ((y < log_pdf(r)) && (k>0))
+            evals += 1
+            r .= r .+ wd
+            k -= 1
+        end
+        while true
+            u2 = rand()
+            x1 .= l .+ u2.*(r .- l)
+            log_pdf_x1 = log_pdf(x1)
+            # println(y, " ", log_pdf_x1)
+
+            evals += 1
+            if (y <= log_pdf_x1)
+                x0 .= 1*x1
+                break
+            end
+            if sign.(r .- x0) == sign.(x1 .- x0)
+                r .= 1*x1
+            else
+                l .= 1*x1
+            end
+        end
+
+    end
+    return log_pdf_x1
+end
+
+
+
+
+
+# https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
+function block_fslice_sample(x0, Cs, log_pdf, N; m = 1e2, printing = false)
+    # number of blocks
+    B = length(x0)
+
+    # initiate chain
+    xs = []
+    ws = []
+    Es = []
+    for b in 1:B
+        push!(xs,Array{Float64,2}(undef,(length(x0[b]),N)))
+        lam,E = eigen(Cs[b])
+        push!(ws, sqrt.(abs.(lam)))
+        push!(Es,E)
+        xs[b][:,1] .= x0[b]
+    end 
+
+    lp = zeros(N)
+    
+    evals = 0
+    log_pdf_x1 = log_pdf(x0)
+    lp[1] = log_pdf_x1 
+    for i in 2:N
+        lp[i] = lp[i-1]
+        if printing && (mod(i,round(N/10))==0)
+            print(Int(round(i/N*10)))
+        end
+        l = 1*x0
+        r = 1*x0
+        x1 = 1*x0
+        for b in 1:B
+            log_pdf_x1_b = log_pdf(x1[b],b)
+            lp[i] -= log_pdf_x1_b
+            log_pdf_x1_b = fslice!(x0[b], l[b], r[b], x1[b], (x)->log_pdf(x,b), log_pdf_x1_b, ws[b], Es[b]; m=m)
+            xs[b][:,i] .= x0[b]
+            lp[i] += log_pdf_x1_b
+        end
+    end
+    return xs, lp
+end
+
+
+
+function block_sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
+    if N_burn_in == nothing
+        N_burn_in = max(round(Int(N*0.1)),100)
+    end
+    # first run
+    xs, lp = block_slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = printing)
+
+    Cs = []
+    for b in 1:length(x0)
+        push!(Cs, cov(xs[b]'))
+        x0[b] .= median(xs[b],dims=2)[:]
+    end
+
+    return block_fslice_sample(x0, Cs,  log_pdf, N; printing=printing)
+
+end
 
 function hdi(theta_samp,alpha=0.05)
     cred_mass = 1.0-alpha

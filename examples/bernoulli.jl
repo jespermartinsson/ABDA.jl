@@ -36,7 +36,7 @@ log_posterior(θ) = log_likelihood(θ[1],y) + log_beta(θ[1],1,1)
 ## sample the posterior
 θ_init = [0.5]
 N_burn_in  = 500
-θ_samp, lps = sample(copy(θ_init), ones(length(θ_init)), log_posterior, 100_000, N_burn_in)
+θ_samp, lps = sample(copy(θ_init), ones(length(θ_init)), log_posterior, 100_000, N_burn_in; printing=true)
 
 # remove "burn in" phase
 θ_samp = θ_samp[:,N_burn_in+1:end]
