@@ -303,7 +303,7 @@ function sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printi
 
     C = cov(xs')
     x0 = xs[:,argmax(lp)]
-    return fslice_sample(x0, C, log_pdf, N; m = m, printing = printing)
+    return fslice_sample_original(x0, C, log_pdf, N; m = m, printing = printing)
 
 end
 

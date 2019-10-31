@@ -41,9 +41,6 @@ function log_pdf(l::Likelihood, θ::Vector{Float64})
     end
 end
 
-
-
-
 mutable struct Likelihoods # all likelihoods
     lhs::Vector{Likelihood}
 
@@ -65,22 +62,20 @@ function log_pdf(l::Likelihoods, θs::Vector{Vector{Float64}})
     end
     return value
 end
-
 function log_pdf(l::Likelihoods, θ::Vector{Float64},j::Int64)
     return log_pdf(l.lhs[j], θ) 
 end
 
 
+
 J = length(y)
 lhs = Likelihoods(y)
-log_pdf(lhs.lhs[1],rand(2))
 θs = Vector{Vector{Float64}}(undef,J)
 w = Vector{Vector{Float64}}(undef,J)
 for j in 1:J
     θs[j] = rand(2)
     w[j] = ones(2)
 end
-log_pdf(lhs,θs)
 
 log_pdf2(θs) = log_pdf(lhs,θs)
 log_pdf2(θ::Vector{Float64}, j::Int64) = log_pdf(lhs,θ,j)
