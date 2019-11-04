@@ -302,12 +302,12 @@ end
 for b in 1:length(y)
     println(b)
     θs[b] .= median(xs[b],dims=2)[:]
+    w[b] .= std(xs[b],dims=2)[:]
 end
 
 xs2, lp2 = block_fslice_sample(θs, Cs,  log_pdf2, 10_000; printing=true)
 
-xs3, lp3 = block_sample(θs, w,  log_pdf2, 10_000; printing=true)
-
+xs3, lp3 = block_slice_sample(θs, w,  log_pdf2, 10_000; printing=true)
 
 b = 1
 figure()

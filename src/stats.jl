@@ -447,7 +447,7 @@ end
 
 
 
-function block_sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
+function block_fsample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
     if N_burn_in == nothing
         N_burn_in = max(round(Int(N*0.1)),100)
     end
@@ -463,6 +463,26 @@ function block_sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, 
     return block_fslice_sample(x0, Cs,  log_pdf, N; printing=printing)
 
 end
+
+
+function block_sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
+    if N_burn_in == nothing
+        N_burn_in = max(round(Int(N*0.1)),100)
+    end
+    # first run
+    xs, lp = block_slice_sample(x0, w, log_pdf, N_burn_in; m = m, printing = printing)
+
+    Cs = []
+    for b in 1:length(x0)
+        w[b] .= std(xs[b],dims=2)[:]
+        x0[b] .= median(xs[b],dims=2)[:]
+    end
+
+    return block_slice_sample(x0, w,  log_pdf, N; printing=printing)
+
+end
+
+
 
 function hdi(theta_samp,alpha=0.05)
     cred_mass = 1.0-alpha
