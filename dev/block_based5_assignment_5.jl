@@ -12,7 +12,7 @@ close("all")
 include("parser_5.jl")
 
 # read data from csv
-filename = (@__DIR__) * raw"/data/ABDA 2019 -- Reaction time - Sheet1.tsv"
+filename = (@__DIR__) * raw"/../assignments/data/ABDA 2019 -- Reaction time - Sheet1.tsv"
 skip_lines = [14,15,24,25,26,27,42] .- 1 
 y, subject = parse_data_array(filename, skip_lines)
 
@@ -145,8 +145,10 @@ plot(xs1[b][2,:],".-")
 figure()
 plot(xs2[b][1,:],".-")
 plot(xs2[b][2,:],".-")
+figure()
 for b in 1:length(xs1)
 println(ABDA.ess(xs1[b]))
 println(ABDA.ess(xs2[b]))
 println(ABDA.ess(xs1[b])./ABDA.ess(xs2[b]))
+plot(ABDA.ess(xs1[b])./ABDA.ess(xs2[b]),"o")
 end
