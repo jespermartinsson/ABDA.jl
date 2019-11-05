@@ -131,7 +131,21 @@ tight_layout()
 mu2_samp = std(logy) .* mu_samp .+ mean(logy)
 tau2_samp = std(logy) .* tau_samp
 
+
+# Derivation for the expected reaction time for the group
+# For a more analytical approach you may also let:
+# theta = mu + tau*xi
+# x = theta + sigma*eta
+# where eta~N(0,1) and xi~N(0,1) assuming independence. Then
+# x = mu + sigma*eta + tau*xi ~ N(mu, sqrt(sigma^2 + tau^2))
+# and sqrt(sigma^2 + tau^2) is the std.
+# If y = exp(x) then E(y) = exp(mu + (sigma^2 + tau^2)/2), see also simulation here:
+# https://github.com/jespermartinsson/ABDA.jl/blob/master/dev/test_var.jl
+
 exp_mu2_samp = exp.(mu2_samp .+ 0.5 .* tau2_samp.^2 .+ 0.5 .* sigma2_samp.^2)
+
+
+
 figure()
 ABDA.hist(exp_mu2_samp, color = "b")
 xlabel(string("\$\\exp(\\mu + \\tau^2/2 + \\sigma^2/2)\$"))
