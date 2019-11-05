@@ -134,8 +134,8 @@ log_pdf3(θs) = log_pdf(lhs,θs)
 log_pdf3(θ::Vector{Float64}, j::Int64) = log_pdf(lhs,θ,j)
 
 Random.seed!(1)
-xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf3, 10_000; printing=true)
-xs2, lp2 = block_fsample(deepcopy(θs), deepcopy(w),  log_pdf3, 10_000; printing=true)
+@time xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
+@time xs2, lp2 = block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
 
 
 b = 2

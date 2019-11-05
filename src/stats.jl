@@ -336,9 +336,10 @@ function block_slice_sample(x0, w, log_pdf, N; m = 1e2, printing = false)
         r = 1*x0
         x1 = 1*x0
         for b in 1:B
-            log_pdf_x1_b = log_pdf(x1[b],b)
+            log_pdf_b(x) = log_pdf(x1,x,b) 
+            log_pdf_x1_b = log_pdf_b(x1[b])
             lp[i] -= log_pdf_x1_b
-            log_pdf_x1_b = slice!(x0[b], l[b], r[b], x1[b], (x)->log_pdf(x,b), log_pdf_x1_b, w[b]; m=m)
+            log_pdf_x1_b = slice!(x0[b], l[b], r[b], x1[b], log_pdf_b, log_pdf_x1_b, w[b]; m=m)
             xs[b][:,i] .= x0[b]
             lp[i] += log_pdf_x1_b
         end
@@ -435,9 +436,10 @@ function block_fslice_sample(x0, Cs, log_pdf, N; m = 1e2, printing = false)
         r = 1*x0
         x1 = 1*x0
         for b in 1:B
-            log_pdf_x1_b = log_pdf(x1[b],b)
+            log_pdf_b(x) = log_pdf(x1,x,b) 
+            log_pdf_x1_b = log_pdf_b(x1[b])
             lp[i] -= log_pdf_x1_b
-            log_pdf_x1_b = fslice!(x0[b], l[b], r[b], x1[b], (x)->log_pdf(x,b), log_pdf_x1_b, ws[b], Es[b]; m=m)
+            log_pdf_x1_b = fslice!(x0[b], l[b], r[b], x1[b], log_pdf_b, log_pdf_x1_b, ws[b], Es[b]; m=m)
             xs[b][:,i] .= x0[b]
             lp[i] += log_pdf_x1_b
         end
