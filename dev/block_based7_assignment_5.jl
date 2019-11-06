@@ -113,9 +113,6 @@ function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, θ::Vector{Float64}
 end
 
 
-
-
-
 function log_pdf(p::Posterior, θs::Vector{Vector{Float64}})
     J = length(p.y)
     σ = θs[J+1]
@@ -156,11 +153,10 @@ j = 3
 @btime log_pdf2(θs,θs[j],j)
 
 
-error()
 
 Random.seed!(1)
 @time xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
-@time xs2, lp2 = block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
+@time xs2, lp2 = block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, 100_000; printing=true)
 
 
 b = 2

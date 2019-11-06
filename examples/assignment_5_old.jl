@@ -1,6 +1,7 @@
 using ABDA
 using PyPlot
 using Statistics
+using Random
 
 run_mcmc = true
 
@@ -89,12 +90,19 @@ zeta_samp = 0
 if run_mcmc
     N = 1000# + Nb
     #N = 150 + Nb
-    #zeta_samp,lp = fss_sample_mp(beta, 0.1*ones(length(beta)), logpost; N=N, Nb = Nb,nr_processes=8)
-    zeta_samp, lp = slice_sample(beta, ones(length(beta)), logpost, 12_500; printing=true)
-    zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 100_000,10_000; printing=true)
+    #zeta_samp,lp = fss_sampzele_mp(beta, 0.1*ones(length(beta)), logpost; N=N, Nb = Nb,nr_processes=8)
+    zeta_samp, lp = slice_sample(beta, ones(length(beta)), logpost, 500; printing=true)
+    C = cov(zeta_samp')
+    Random.seed!(1)
+    zeta_samp, lp = ABDA.fslice_sample(deepcopy(beta), deepcopy(C), logpost, 10; printing=true)
+    
+    println("\n"^100)
+    Random.seed!(1)
+    zeta_samp2, lp2 = ABDA.fslice_sample_original(deepcopy(beta), deepcopy(C), logpost, 10; printing=true)
+
 
 end
-
+error()
 
 figure()
 plot(zeta_samp')
