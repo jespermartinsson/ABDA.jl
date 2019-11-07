@@ -17,9 +17,9 @@ Xs = Vector{Array{Float64,2}}(undef,0)
 ys = Vector{Vector{Float64}}(undef,0)
 for j in 1:J
     n = 10
-    X = hcat(ones(n), collect(1:n))
-    β = [5,5] .+ [1,1].*randn(2)
-    σ = 1
+    X = hcat(ones(n), collect(1:n), collect(1:n).^2)
+    β = [5,5,1] .+ [1,1,0.1].*randn(3)
+    σ = 0.5 + 1*rand()
     y = X*β .+ σ*randn(n)
 
     push!(ys,y)
@@ -30,28 +30,32 @@ for j in 1:J
 end
 
 
+
 figure()
 for j in 1:length(ys)
     i = 1:length(ys[j])
     plot(Xs[j][:,2], ys[j], ".-", alpha = .5)
 end
 
-
-function log_ll(θ::Vector{Float64}, σ::Vector{Float64}, y::Vector{Float64}, X::Array{Float64,2})
-    if σ[1] <= 0.0
+function log_ll(θ::Vector{Float64}, y::Vector{Float64}, X::Array{Float64,2})
+    if θ[end] <= 0.0
         return -Inf
     else
-        ε = y .- X*θ
-        return -length(ε)*log(σ[1]) - 0.5*ε'ε/σ[1]^2
+        ε = y .- X*θ[1:end-1]
+        return -length(ε)*log(θ[end]) - 0.5*ε'ε/θ[end]^2
     end
 end
 
 
 function log_prior_theta(θ::Vector{Float64}, μ::Vector{Float64}, τ::Vector{Float64})
-    if any(τ .<= 0.001)
+    if any(τ .<= 0.001) || θ[end] <= 0
         return -Inf
     else
-        return sum(-log.(τ) .- 0.5 .* ((θ .- μ)./τ).^2)
+        value = 0.0
+        for k in 1:length(θ)
+            value += -log(τ[k]) .- 0.5 .* ((θ[k] .- μ[k])./τ[k]).^2
+        end
+        return value
     end
 end
 
@@ -85,22 +89,17 @@ end
 function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, θ::Vector{Float64}, j::Int64)
     J = length(p.ys)
     if 1 <= j <= J
-        σ = θs[J+1]
-        μ = θs[J+2]
-        τ = θs[J+3]
-        return log_ll(θ, σ, p.ys[j], p.Xs[j]) + log_prior_theta(θ, μ, τ) + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ)
+        μ = θs[J+1]
+        τ = θs[J+2]
+        return log_ll(θ, p.ys[j], p.Xs[j]) + log_prior_theta(θ, μ, τ) + log_prior_mu(μ) + log_prior_tau(τ)
     end
     if j == J+1
-        σ = θ
-        return sum([log_ll(θs[k], σ, p.ys[k], p.Xs[k]) for k in 1:J]) + log_prior_sigma(σ)
-    end
-    if j == J+2
         μ = θ
-        τ = θs[J+3]
+        τ = θs[J+2]
         return sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_mu(μ)
     end
-    if j == J+3
-        μ = θs[J+2]
+    if j == J+2
+        μ = θs[J+1]
         τ = θ
         return τ[1] > 0.0 ? sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_tau(τ) : -Inf
     end
@@ -108,15 +107,14 @@ end
 
 function log_pdf(p::Posterior, θs::Vector{Vector{Float64}})
     J = length(p.ys)
-    σ = θs[J+1]
-    μ = θs[J+2]
-    τ = θs[J+3]
+    μ = θs[J+1]
+    τ = θs[J+2]
 
     value = 0.0
     for j = 1:J
-        value += log_ll(θs[j], σ, p.ys[j], p.Xs[j]) + log_prior_theta(θs[j], μ, τ)
+        value += log_ll(θs[j], p.ys[j], p.Xs[j]) + log_prior_theta(θs[j], μ, τ)
     end
-    value += + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ)
+    value += log_prior_mu(μ) + log_prior_tau(τ)
 
     return value
 end
@@ -128,21 +126,18 @@ end
 J = length(ys)
 posterior = Posterior(ys,Xs)
 
-θs = Vector{Vector{Float64}}(undef,J+3)
-w = Vector{Vector{Float64}}(undef,J+3)
+θs = Vector{Vector{Float64}}(undef,J+2)
+w = Vector{Vector{Float64}}(undef,J+2)
 for j in 1:J
-    θs[j] = rand(2)
-    w[j] = ones(2)
+    θs[j] = rand(4)
+    w[j] = ones(4)
 end
 j = J+1
-θs[j] = [1.0]
-w[j] = ones(1)
+θs[j] = ones(4)
+w[j] = ones(4)
 j = J+2
-θs[j] = [5,5.0]
-w[j] = ones(2)
-j = J+3
-θs[j] = [1,1.0]
-w[j] = [1,1.0]
+θs[j] = ones(4)
+w[j] = ones(4)
 
 
 log_pdf2(θs) = log_pdf(posterior,θs)
@@ -161,11 +156,9 @@ function v2b(θ)
         θs[j] = θ[j*2-1:j*2]
     end
     j = J+1
-    θs[j] = θ[2*J+1:2*J+1]
+    θs[j] = θ[2*J+1:2*J+2]
     j = J+2
-    θs[j] = θ[2*J+2:2*J+3]
-    j = J+3
-    θs[j] = θ[2*J+4:2*J+5]
+    θs[j] = θ[2*J+3:2*J+4]
     return θs
 end
 
@@ -192,7 +185,7 @@ Random.seed!(2)
 
 
 b = 3
-figure(), plot(xs2[b][1,:],xs2[b][2,:],".")
+figure(), plot3D(xs2[b][1,:],xs2[b][2,:],xs2[b][3,:],".")
 
 b = 1
 figure()
@@ -212,6 +205,6 @@ end
 
 for b in J+1:length(xs1)
 figure()
-plot(xs1[b]',"k-",alpha=0.2)
-plot(xs2[b]',"r-",alpha=0.2)
+plot(xs1[b]',"g-",alpha=0.5)
+plot(xs2[b]',"r-",alpha=0.5)
 end

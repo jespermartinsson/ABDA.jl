@@ -70,7 +70,7 @@ zeta_samp = 0
 if run_mcmc
     #@btime logpost(beta)
     #zeta_samp, lp = slice_sample(beta, ones(length(beta)), logpost, 12_500; printing=true)
-    @time zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 100_000; printing=true)
+    @time zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 100_0000; printing=true)
 
 end
 
