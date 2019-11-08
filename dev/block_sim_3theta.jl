@@ -82,27 +82,24 @@ mutable struct Posterior
     Posterior(ys::Array{Array{Float64,1},1},Xs::Array{Array{Float64,2},1}) = new(ys,Xs)
 end
 
-function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, θ::Vector{Float64}, j::Int64)
+function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, j::Int64)::Function
     J = length(p.ys)
     if 1 <= j <= J
         σ = θs[J+1]
         μ = θs[J+2]
         τ = θs[J+3]
-        return log_ll(θ, σ, p.ys[j], p.Xs[j]) + log_prior_theta(θ, μ, τ) + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ)
+        return (θ::Vector{Float64}) -> log_ll(θ, σ, p.ys[j], p.Xs[j]) + log_prior_theta(θ, μ, τ) + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ)
     end
     if j == J+1
-        σ = θ
-        return sum([log_ll(θs[k], σ, p.ys[k], p.Xs[k]) for k in 1:J]) + log_prior_sigma(σ)
+        return (σ::Vector{Float64}) -> sum([log_ll(θs[k], σ, p.ys[k], p.Xs[k]) for k in 1:J]) + log_prior_sigma(σ)
     end
     if j == J+2
-        μ = θ
         τ = θs[J+3]
-        return sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_mu(μ)
+        return (μ::Vector{Float64}) -> sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_mu(μ)
     end
     if j == J+3
         μ = θs[J+2]
-        τ = θ
-        return τ[1] > 0.0 ? sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_tau(τ) : -Inf
+        return (τ::Vector{Float64}) -> τ[1] > 0.0 ? sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_tau(τ) : -Inf
     end
 end
 
@@ -146,7 +143,6 @@ w[j] = ones(3)
 
 
 log_pdf2(θs) = log_pdf(posterior,θs)
-log_pdf2(θs::Vector{Vector{Float64}}, θ::Vector{Float64}, j::Int64) = log_pdf(posterior,θs,θ,j)
 log_pdf2(θs::Vector{Vector{Float64}}, j::Int64) = log_pdf(posterior,θs,j)
 
 
@@ -177,9 +173,9 @@ using BenchmarkTools
 
 @btime log_pdf2(θs)
 j = 3
-@btime log_pdf2(θs,θs[j],j)
+@btime log_pdf2(θs,j)(θs[j])
 for j in J+1:J+5
-@btime log_pdf2(θs,θs[j],j)
+@btime log_pdf2(θs,j)(θs[j])
 end
 
 

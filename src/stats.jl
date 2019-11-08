@@ -329,6 +329,47 @@ function block_slice_sample(x0, w, log_pdf, N; m = 1e2, printing = false, msg = 
         r = 1*x0
         x1 = 1*x0
         for b in 1:B
+            log_pdf_x1_b = log_pdf(x1,b)(x1[b])
+            lp[i] -= log_pdf_x1_b
+            log_pdf_x1_b = slice!(x0[b], l[b], r[b], x1[b], log_pdf(x1,b), log_pdf_x1_b, w[b]; m=m)
+            xs[b][:,i] .= x0[b]
+            lp[i] += log_pdf_x1_b
+        end
+    end
+    return xs, lp
+end
+
+
+
+
+
+# https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
+function block_slice_sample_original(x0, w, log_pdf, N; m = 1e2, printing = false, msg = "")
+    # number of blocks
+    B = length(x0)
+
+    # initiate chain
+    xs = []
+    for b in 1:B
+        push!(xs,Array{Float64,2}(undef,(length(x0[b]),N)))
+        xs[b][:,1] .= x0[b]
+    end 
+
+    lp = zeros(N)
+    
+    evals = 0
+    log_pdf_x1 = log_pdf(x0)
+    lp[1] = log_pdf_x1 
+    for i in 2:N
+        lp[i] = lp[i-1]
+        if printing 
+            progressbar(i,N,msg)
+        end
+
+        l = 1*x0
+        r = 1*x0
+        x1 = 1*x0
+        for b in 1:B
             log_pdf_b(x) = log_pdf(x1,x,b) 
             log_pdf_x1_b = log_pdf_b(x1[b])
             lp[i] -= log_pdf_x1_b
@@ -339,7 +380,6 @@ function block_slice_sample(x0, w, log_pdf, N; m = 1e2, printing = false, msg = 
     end
     return xs, lp
 end
-
 
 
 
@@ -395,11 +435,8 @@ function fslice!(x0, l, r, x1, log_pdf, log_pdf_x1, w, E; m = 1e2)
 end
 
 
-
-
-
 # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
-function block_fslice_sample(x0, Cs, log_pdf, N; m = 1e2, printing = false, msg = "")
+function block_fslice_sample_original(x0, Cs, log_pdf, N; m = 1e2, printing = false, msg = "")
     # number of blocks
     B = length(x0)
 
@@ -442,6 +479,75 @@ function block_fslice_sample(x0, Cs, log_pdf, N; m = 1e2, printing = false, msg 
 end
 
 
+# https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
+function block_fslice_sample(x0, Cs, log_pdf, N; m = 1e2, printing = false, msg = "")
+    # number of blocks
+    B = length(x0)
+
+    # initiate chain
+    xs = []
+    ws = []
+    Es = []
+    for b in 1:B
+        push!(xs,Array{Float64,2}(undef,(length(x0[b]),N)))
+        lam,E = eigen(Cs[b])
+        push!(ws, sqrt.(abs.(lam)))
+        push!(Es,E)
+        xs[b][:,1] .= x0[b]
+    end 
+
+    lp = zeros(N)
+    
+    evals = 0
+    log_pdf_x1 = log_pdf(x0)
+    lp[1] = log_pdf_x1 
+    for i in 2:N
+        lp[i] = lp[i-1]
+        if printing 
+            progressbar(i,N,msg)
+        end
+
+        l = 1*x0
+        r = 1*x0
+        x1 = 1*x0
+        for b in 1:B
+            log_pdf_x1_b = log_pdf(x1,b)(x1[b])
+            lp[i] -= log_pdf_x1_b
+            log_pdf_x1_b = fslice!(x0[b], l[b], r[b], x1[b], log_pdf(x1,b), log_pdf_x1_b, ws[b], Es[b]; m=m)
+            xs[b][:,i] .= x0[b]
+            lp[i] += log_pdf_x1_b
+        end
+    end
+    return xs, lp
+end
+
+function block_fsample_original(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
+    if N_burn_in == nothing
+        N_burn_in = max(round(Int(N*0.1)),100)
+    end
+    # first run
+    xs, lp = block_slice_sample_original(x0, w, log_pdf, N_burn_in; m = m, printing = printing, msg ="fist burnin")
+
+    println()
+
+    Cs = []
+    for b in 1:length(x0)
+        push!(Cs, cov(xs[b]'))
+        x0[b] .= median(xs[b],dims=2)[:]
+    end
+    xs, lp = block_fslice_sample_original(x0, Cs,  log_pdf, N_burn_in; printing=printing,msg="second burnin")
+
+    println()
+    
+    Cs = []
+    for b in 1:length(x0)
+        push!(Cs, cov(xs[b]'))
+        x0[b] .= median(xs[b],dims=2)[:]
+    end
+
+    return block_fslice_sample_original(x0, Cs,  log_pdf, N; printing=printing, msg= "final batch")
+
+end
 
 function block_fsample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
     if N_burn_in == nothing

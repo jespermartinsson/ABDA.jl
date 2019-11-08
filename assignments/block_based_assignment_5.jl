@@ -113,6 +113,28 @@ function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, θ::Vector{Float64}
 end
 
 
+function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, j::Int64)::Function
+    J = length(p.y)
+    if 1 <= j <= J
+        σ = θs[J+1]
+        μ = θs[J+2]
+        τ = θs[J+3]
+        return (θ::Vector{Float64}) -> log_ll(θ, σ, p.y[j]) + log_prior_theta(θ, μ, τ) + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ)
+    end
+    if j == J+1
+        return (σ::Vector{Float64}) -> sum([log_ll(θs[k], σ, p.y[k]) for k in 1:J]) + log_prior_sigma(σ)
+    end
+    if j == J+2
+        τ = θs[J+3]
+        return (μ::Vector{Float64}) -> sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_mu(μ)
+    end
+    if j == J+3
+        μ = θs[J+2]
+        return (τ::Vector{Float64}) -> τ[1] > 0.0 ? sum([log_prior_theta(θs[k], μ, τ) for k in 1:J]) + log_prior_tau(τ) : -Inf
+    end
+end
+
+
 function log_pdf(p::Posterior, θs::Vector{Vector{Float64}})
     J = length(p.y)
     σ = θs[J+1]
@@ -141,15 +163,14 @@ end
 
 log_pdf2(θs) = log_pdf(posterior,θs)
 log_pdf2(θs::Vector{Vector{Float64}}, θ::Vector{Float64}, j::Int64) = log_pdf(posterior,θs,θ,j)
+log_pdf2(θs::Vector{Vector{Float64}}, j::Int64) = log_pdf(posterior,θs,j)
 
 
 
 Random.seed!(1)
 #@time xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
 N = 100_000
-@time zeta_samp_block, lp = block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, N; printing=true)
-
-#error()
+@time zeta_samp_block, lp = ABDA.block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, N; printing=true)
 
 zeta_samp_block
 
