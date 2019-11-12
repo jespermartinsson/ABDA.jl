@@ -170,7 +170,7 @@ log_pdf2(θs::Vector{Vector{Float64}}, j::Int64) = log_pdf(posterior,θs,j)
 Random.seed!(1)
 #@time xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
 N = 100_000
-@time zeta_samp_block, lp = ABDA.block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, N; printing=true)
+@time zeta_samp_block, lp = ABDA.block_rfsample(deepcopy(θs), deepcopy(w),  log_pdf2, N; printing=true)
 
 zeta_samp_block
 
@@ -313,10 +313,10 @@ tight_layout()
 
 
 if false
-    my = mean(logy)
-    sy = std(logy)
-    mean_reaction_time = zeros(size(zeta_samp, 2))
-    for i in 1:size(zeta_samp, 2)
+    my = mean_logy
+    sy = std_logy
+    mean_reaction_time = zeros(N)
+    for i in 1:N
         theta_i = mu_samp[i] + tau_samp[i] * randn()
         theta2_i = sy * theta_i + my
         mean_reaction_time[i] = exp(theta2_i + 0.5 * sigma2_samp[i]^2)

@@ -434,6 +434,87 @@ function fslice!(x0, l, r, x1, log_pdf, log_pdf_x1, w, E; m = 1e2)
     return log_pdf_x1
 end
 
+# https://discourse.julialang.org/t/random-orthogonal-matrices/9779/6
+# https://en.wikipedia.org/wiki/Orthogonal_matrix#Randomization
+# https://arxiv.org/pdf/math-ph/0609050.pdf
+function rslice_sample_original(x0, w, log_pdf; N = 1000, m = 1e9, printing = true, msg="")
+    # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
+
+    D = length(x0)
+    xs = zeros(D,N)
+    lp = zeros(N)
+
+    W = diagm(w)
+
+    evals = 0
+    log_pdf_x1 = 0.0
+    wd = zeros(D)
+
+
+
+    for i in 1:N
+        if printing 
+            progressbar(i,N,msg)
+        end
+
+        l = 1*x0
+        r = 1*x0
+        x1 = 1*x0
+
+        lu = log(rand())
+        u1 = rand()
+        v1 = rand()
+
+        if i == 1
+            y = log_pdf(x0) + lu
+            evals = 1
+        else
+            y = log_pdf_x1 + lu
+        end
+
+        ev = randn(D)
+        ev = ev/sqrt(ev'*ev)
+        wd = W*ev
+
+        l = x0 - u1*wd
+        r = l + wd
+
+        j = floor(m*v1)
+        k = (m-1)-j
+        while ((y < log_pdf(l)) && (j>0))
+            evals += 1
+            l -= wd
+            j -= 1
+        end
+        while ((y < log_pdf(r)) && (k>0))
+            evals += 1
+            r += wd
+            k -= 1
+        end
+
+        while true
+            u2 = rand()
+            x1 = l + u2*(r-l)
+
+            log_pdf_x1 = log_pdf(x1)
+            evals += 1
+            if (y <= log_pdf_x1)
+                x0 = 1*x1
+                break
+            end
+            if sign.(r-x0) == sign.(x1-x0)
+                r = 1*x1
+            else
+                l = 1*x1
+            end
+        end
+
+        xs[:,i] = x1
+        lp[i] = log_pdf_x1
+    end
+    return xs, lp
+end
+
 
 # https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
 function block_fslice_sample_original(x0, Cs, log_pdf, N; m = 1e2, printing = false, msg = "")
@@ -521,6 +602,62 @@ function block_fslice_sample(x0, Cs, log_pdf, N; m = 1e2, printing = false, msg 
     return xs, lp
 end
 
+
+# https://projecteuclid.org/download/pdf_1/euclid.aos/1056562461
+function block_rslice_sample(x0, log_pdf, N; ws0 = nothing, m = 1e2, printing = false, msg = "")
+    # number of blocks
+    B = length(x0)
+
+    if ws0 == nothing
+        ws = []
+        for b in 1:B
+            push!(ws, ones(length(x0[b])))
+        end 
+    elseif typeof(ws0) <: Number
+        ws = []
+        for b in 1:B
+            push!(ws, ws0*ones(length(x0[b])))
+        end 
+    else
+        ws = ws0
+    end
+
+    xs = []
+    # initiate chain
+    for b in 1:B
+        push!(xs,Array{Float64,2}(undef,(length(x0[b]),N)))
+        xs[b][:,1] .= x0[b]
+    end 
+
+    lp = zeros(N)
+    
+    evals = 0
+    log_pdf_x1 = log_pdf(x0)
+    lp[1] = log_pdf_x1 
+    for i in 2:N
+        lp[i] = lp[i-1]
+        if printing 
+            progressbar(i,N,msg)
+        end
+
+        l = 1*x0
+        r = 1*x0
+        x1 = 1*x0
+        for b in 1:B
+            log_pdf_x1_b = log_pdf(x1,b)(x1[b])
+            lp[i] -= log_pdf_x1_b
+            D = length(x1[b])
+            E, R = qr(randn(D,D)) # Random orthogonal matrix
+            w = ws[b]
+            log_pdf_x1_b = fslice!(x0[b], l[b], r[b], x1[b], log_pdf(x1,b), log_pdf_x1_b, w, E; m=m)
+            xs[b][:,i] .= x0[b]
+            lp[i] += log_pdf_x1_b
+        end
+    end
+    return xs, lp
+end
+
+
 function block_fsample_original(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
     if N_burn_in == nothing
         N_burn_in = max(round(Int(N*0.1)),100)
@@ -577,6 +714,34 @@ function block_fsample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2,
 
 end
 
+
+function block_rfsample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
+    if N_burn_in == nothing
+        N_burn_in = max(round(Int(N*0.1)),100)
+    end
+    # first run
+    xs, lp = block_rslice_sample(x0, log_pdf, N_burn_in; ws0 = w, m = m, printing = printing, msg ="fist burnin")
+
+    println()
+
+    Cs = []
+    for b in 1:length(x0)
+        push!(Cs, cov(xs[b]'))
+        x0[b] .= median(xs[b],dims=2)[:]
+    end
+    xs, lp = block_fslice_sample(x0, Cs,  log_pdf, N_burn_in; printing=printing,msg="second burnin")
+
+    println()
+    
+    Cs = []
+    for b in 1:length(x0)
+        push!(Cs, cov(xs[b]'))
+        x0[b] .= median(xs[b],dims=2)[:]
+    end
+
+    return block_fslice_sample(x0, Cs,  log_pdf, N; printing=printing, msg= "final batch")
+
+end
 
 function block_sample(x0, w, log_pdf, N = 10_000, N_burn_in = nothing; m = 1e2, printing = true)
     if N_burn_in == nothing

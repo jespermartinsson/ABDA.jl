@@ -170,7 +170,7 @@ log_pdf2(θs::Vector{Vector{Float64}}, j::Int64) = log_pdf(posterior,θs,j)
 Random.seed!(1)
 #@time xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
 N = 100_000
-@time zeta_samp_block, lp = ABDA.block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, N; printing=true)
+@time zeta_samp_block, lp = ABDA.block_rfsample(deepcopy(θs), deepcopy(w),  log_pdf2, N; printing=true)
 
 zeta_samp_block
 

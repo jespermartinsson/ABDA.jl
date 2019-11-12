@@ -35,11 +35,23 @@ if false
     mean_ys = mean(ys_flatten)
     std_ys = std(ys_flatten)
 
-    zys = similar(ys)
+    zys = deepcopy(ys)
     for j in 1:length(ys)
         zys[j] = (ys[j] .- mean_ys)./std_ys
     end
     ys .= zys
+
+    Xs_flatten = vcat(Xs...)
+    mean_Xs = mean(Xs_flatten,dims=1)
+    std_Xs = std(Xs_flatten,dims=1)
+    
+    zXs = deepcopy(Xs)
+    for j in 1:length(Xs)
+        for k = 2:length(mean_Xs)
+            zXs[j][:,k] = (Xs[j][:,k] .- mean_Xs[k])./std_Xs[k]
+        end
+    end
+    Xs .= zXs
 end
 
 figure()
@@ -187,7 +199,9 @@ end
 Random.seed!(2)
 #@time xs1, lp1 = sample(deepcopy(b2v(θs)), deepcopy(b2v(w)),  log_pdf3, 10_000, 1_000; printing=true)
 @time xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000, 1_000; printing=true)
-@time xs2, lp2 = block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000, 1_000; printing=true)
+@time xs2, lp2 = ABDA.block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000, 1_000; printing=true)
+#@time xs1, lp1 = ABDA.block_slice_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
+#@time xs2, lp2 = ABDA.block_rslice_sample(deepcopy(θs), log_pdf2, 10_000; ws0 = deepcopy(w), printing=true)
 
 
 
@@ -196,11 +210,13 @@ b = 3
 figure(), plot3D(xs2[b][1,:],xs2[b][2,:],xs2[b][3,:],".")
 
 b = 1
+for k in 1:4
 figure()
-subplot(221), plot(xs1[b][1,:],"k-")
-subplot(222), plot(xs2[b][1,:],"r-")
-subplot(223), plot(xs1[b][1,100:300],"k-")
-subplot(224), plot(xs2[b][1,100:300],"r-")
+subplot(221), plot(xs1[b][k,:],"k-")
+subplot(222), plot(xs2[b][k,:],"r-")
+subplot(223), plot(xs1[b][k,100:300],"k-")
+subplot(224), plot(xs2[b][k,100:300],"r-")
+end
 
 figure()
 for b in 1:length(xs1)
