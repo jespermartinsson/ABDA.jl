@@ -9,7 +9,7 @@ close("all")
 
 ## create a toy regression example
 
-J = 30
+J = 300
 βs = Vector{Vector{Float64}}(undef,0)
 σs = Vector{Float64}(undef,0)
 θs = Vector{Vector{Float64}}(undef,0)
@@ -198,7 +198,7 @@ end
 
 Random.seed!(2)
 #@time xs1, lp1 = sample(deepcopy(b2v(θs)), deepcopy(b2v(w)),  log_pdf3, 10_000, 1_000; printing=true)
-@time xs1, lp1 = block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000, 1_000; printing=true)
+@time xs1, lp1 = ABDA.block_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000, 1_000; printing=true)
 @time xs2, lp2 = ABDA.block_fsample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000, 1_000; printing=true)
 #@time xs1, lp1 = ABDA.block_slice_sample(deepcopy(θs), deepcopy(w),  log_pdf2, 10_000; printing=true)
 #@time xs2, lp2 = ABDA.block_rslice_sample(deepcopy(θs), log_pdf2, 10_000; ws0 = deepcopy(w), printing=true)
