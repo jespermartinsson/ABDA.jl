@@ -56,7 +56,7 @@ println("true posterior probabilities: ", pr)
 
 figure()
 # plot mcmc chain
-subplot(211), plot(rθs[1,1:1000],".",alpha=0.5)
+subplot(211), plot(rθs[1,1:1000],".-",alpha=0.5)
 xlabel(raw"index $i$")
 ylabel(raw"$\theta_i \sim p(\theta|y)$")
 

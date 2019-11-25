@@ -70,13 +70,10 @@ zeta_samp = 0
 if run_mcmc
     #@btime logpost(beta)
     #zeta_samp, lp = slice_sample(beta, ones(length(beta)), logpost, 12_500; printing=true)
-    @time zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 100_0000; printing=true)
+    @time zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 10_0000; printing=true)
 
 end
 
-
-figure()
-plot(zeta_samp')
 
 
 figure()
@@ -137,8 +134,8 @@ tau2_samp = std(logy) .* tau_samp
 
 # Derivation for the expected reaction time for the group
 # For a more analytical approach you may also let:
-# theta = mu + tau*xi
-# x = theta + sigma*eta
+# theta = mu + tau*xi ~ N(mu,tau)
+# x = theta + sigma*eta ~ N(theta,sigma)
 # where eta~N(0,1) and xi~N(0,1) assuming independence. Then
 # x = mu + sigma*eta + tau*xi ~ N(mu, sqrt(sigma^2 + tau^2))
 # and sqrt(sigma^2 + tau^2) is the std.
