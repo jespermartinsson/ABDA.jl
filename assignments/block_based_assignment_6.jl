@@ -226,13 +226,18 @@ tight_layout()
 # theta2 = sy*theta + my
 # phi2 = sy*phi
 phi2_samp = std_logy * phi_samp
-
-
 subplot(122)
 ABDA.hist(phi2_samp)
 xlabel(raw"$\varphi$")
 tight_layout()
 
+figure()
+ABDA.hist(exp.(phi2_samp), label=(raw"$\mathrm{Pr}\{\mathrm{exp}(\varphi)>1\} = $"*string(pval)))
+pval = sum(exp.(phi2_samp) .> 1)/N
+xlabel(raw"$\mathrm{exp}(\varphi)$")
+title("kid's mutiplicative effect on average reaction time")
+legend()
+tight_layout()
 
 
 
@@ -262,19 +267,42 @@ xlabel(string("\$\\exp(\\mu + \\tau^2/2 + \\sigma^2/2)\$"))
 title("expected reaction time for the group")
 tight_layout()
 
+
+
+
+using Distributions
+a, b = 1, 1
+if true
+    z = sum(ischild)
+else
+    z = Int(round(J / 2)) # test half kids half adults
+end
+thetas = rand(Beta(z + a, J - z + b), N)
+child_rand = thetas[i] .> rand(N)
+
+
+
+
 my = mean_logy
 sy = std_logy
-y_pred = zeros(N)
+y_pred = zeros(N,3)
 for i in 1:N
-    theta_i = mu_samp[i] + tau_samp[i] * randn()
-    logzy_i = theta_i + sigma_samp[i] * randn()
-    logy_i = sy * logzy_i + my
-    y_pred[i] = exp(logy_i)
+    k = 1
+    for child_i in [0,1,child_rand[i]]
+        theta_i = (mu_samp[i] + phi_samp[i]*child_i) + tau_samp[i] * randn()
+        logzy_i = theta_i + sigma_samp[i] * randn()
+        logy_i = sy * logzy_i + my
+        y_pred[i,k] = exp(logy_i)
+        k += 1
+    end
 end
 
 figure()
-ABDA.hist(y_pred)
+ABDA.hist(y_pred[:,1], color = "k", label="adults")
+ABDA.hist(y_pred[:,2], color = "r", label="kids")
+ABDA.hist(y_pred[:,3], color = "b", label="mixed")
 title("posterior predicted reaction time a random individual")
+legend()
 
 
 mle = []
@@ -301,7 +329,7 @@ plot(mle[1], 1 * offset, "ko", label = "MLE estimate \$\\hat{\\theta}_{\\mathrm{
 xl = xlim()
 thetas = range(xl[1], stop=xl[2], length=1000)
 plot(thetas, 10*offset * exp.(logprior_thetas(thetas, mean(mu2_samp), mean(tau2_samp), mean(phi2_samp),0)), label = "\$p(\\hat{\\mu},\\hat{\\tau)}\$", color = "k")
-plot(thetas, 10*offset * exp.(logprior_thetas(thetas, mean(mu2_samp), mean(tau2_samp), mean(phi2_samp),1)), label = "\$p(\\hat{\\mu},\\hat{\\tau)}\$", color = "r")
+plot(thetas, 10*offset * exp.(logprior_thetas(thetas, mean(mu2_samp), mean(tau2_samp), mean(phi2_samp),1)), label = "\$p(\\hat{\\mu} + \\hat{\\phi},\\hat{\\tau)}\$", color = "r")
 legend()
 yticks([])
 xlabel(string("\$\\theta_j\$ expected log(reaction time)"))
@@ -312,7 +340,7 @@ tight_layout()
 figure()
 subplot(121)
 ABDA.hist(tau_samp)
-xlabel(string("\$\\tilde{\\tau}\$"))
+xlabel(raw"$\tilde{\tau}$")
 tight_layout()
 
 # (ln(y)-my)/sy = theta + phi*c + s*e
@@ -327,7 +355,7 @@ tight_layout()
 
 subplot(122)
 ABDA.hist(tau2_samp)
-xlabel(string("\$\\tau\$"))
+xlabel(raw"$\tau$")
 tight_layout()
 
 
@@ -360,3 +388,37 @@ subplot(122)
 ABDA.hist(std_logy * sigma_samp)
 xlabel(string("\$\\sigma\$"))
 tight_layout()
+
+
+
+
+
+
+## Fake data
+a, b = 1, 1
+if false
+    z = sum(ischild)
+else
+    z = Int(round(J*0.5)) # test half kids half adults
+end
+thetas = rand(Beta(z + a, J - z + b), N)
+child_rand = thetas[i] .> rand(N)
+
+y_pred_fake = zeros(N,3)
+for i in 1:N
+    k = 1
+    for child_i in [0,1,child_rand[i]]
+        theta_i = (mu_samp[i] + phi_samp[i]*child_i) + tau_samp[i] * randn()
+        logzy_i = theta_i + sigma_samp[i] * randn()
+        logy_i = sy * logzy_i + my
+        y_pred_fake[i,k] = exp(logy_i)
+        k += 1
+    end
+end
+
+figure()
+ABDA.hist(y_pred_fake[:,1], color = "k", label="adults")
+ABDA.hist(y_pred_fake[:,2], color = "r", label="kids")
+ABDA.hist(y_pred_fake[:,3], color = "b", label="mixed")
+title("posterior predicted reaction time a random individual (50 % chidren)")
+legend()
