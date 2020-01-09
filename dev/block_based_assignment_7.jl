@@ -9,12 +9,12 @@ using LinearAlgebra
 
 close("all")
 
-include("parser_6.jl")
+include("parser_7.jl")
 
 # read data from csv
 filename = (@__DIR__) * raw"/../assignments/data/ABDA 2019 -- Reaction time - Sheet1.tsv"
 skip_lines = [14,15,24,25,26,27,42] .- 1 
-y, subject, ischild = parse_data_array(filename, skip_lines)
+y, subject, ischild, x = parse_data_array(filename, skip_lines)
 
 logy = 1.0*y
 for j in 1:length(y)
@@ -30,7 +30,14 @@ for j in 1:length(logy)
     zlogy[j] = (logy[j] .- mean_logy)./std_logy
 end
 
+x_flatten = vcat(x...)
+mean_x = mean(x_flatten)
+std_x = std(x_flatten)
 
+zx = Vector{Vector{Float64}}(undef,length(x))
+for j in 1:length(x)
+    zx[j] = (x[j] .- mean_x)./std_x
+end
 
 figure()
 for j in 1:length(y)
@@ -40,23 +47,23 @@ end
 
 
 
-function log_ll(θ::Vector{Float64}, σ::Vector{Float64}, y::Vector{Float64})
+function log_ll(θ::Vector{Float64}, σ::Vector{Float64}, y::Vector{Float64}, x::Vector{Float64})
     if σ[1] <= 0.0
         return -Inf
     else
-        ε = y .- θ[1]
+        ε = y .- (θ[1] .+ θ[2].*x)
         return -length(ε)*log(σ[1]) - 0.5*ε'ε/σ[1]^2
     end
 end
 
 
 function log_prior_theta(θ::Vector{Float64}, μ::Vector{Float64}, τ::Vector{Float64}, φ::Vector{Float64}, ischild::Int64)
-    if τ[1] <= 0.0
+    if any(τ .<= 0.0)
         return -Inf
     else
-        μ_θ = μ[1] + φ[1]*ischild
-        ε = (θ .- μ_θ)./τ[1]
-        return sum(-log(τ[1]) .- 0.5 .* ε.^2)
+        μ_θ = μ .+ φ*ischild
+        ε = (θ .- μ_θ)./τ
+        return sum(-log.(τ) .- 0.5 .* ε.^2)
     end
 end
 
@@ -69,7 +76,7 @@ function log_prior_sigma(σ::Vector{Float64})
 end
 
 function log_prior_tau(τ::Vector{Float64})
-    if τ[1] <= 0.0
+    if any(τ .<= 0.0)
         return -Inf 
     else
         return 0.0
@@ -87,7 +94,8 @@ end
 struct Posterior
     y::Array{Array{Float64,1},1}
     ischild::Array{Int64,1}
-    Posterior(y::Array{Array{Float64,1},1},ischild::Array{Int64,1}) = new(y,ischild)
+    x::Array{Array{Float64,1},1}
+    Posterior(y::Array{Array{Float64,1},1},ischild::Array{Int64,1},x::Array{Array{Float64,1},1}) = new(y,ischild,x)
 end
 
 
@@ -98,10 +106,10 @@ function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, j::Int64)::Function
         μ = θs[J+2]
         τ = θs[J+3]
         φ = θs[J+4]
-        return (θ::Vector{Float64}) -> log_ll(θ, σ, p.y[j]) + log_prior_theta(θ, μ, τ, φ, p.ischild[j]) + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ) + log_prior_phi(φ)
+        return (θ::Vector{Float64}) -> log_ll(θ, σ, p.y[j], p.y[j]) + log_prior_theta(θ, μ, τ, φ, p.ischild[j]) + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ) + log_prior_phi(φ)
     end
     if j == J+1
-        return (σ::Vector{Float64}) -> sum([log_ll(θs[k], σ, p.y[k]) for k in 1:J]) + log_prior_sigma(σ)
+        return (σ::Vector{Float64}) -> sum([log_ll(θs[k], σ, p.y[k], p.x[k]) for k in 1:J]) + log_prior_sigma(σ)
     end
     if j == J+2
         τ = θs[J+3]
@@ -111,7 +119,7 @@ function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, j::Int64)::Function
     if j == J+3
         μ = θs[J+2]
         φ = θs[J+4]
-        return (τ::Vector{Float64}) -> τ[1] > 0.0 ? sum([log_prior_theta(θs[k], μ, τ, φ, p.ischild[k]) for k in 1:J]) + log_prior_tau(τ) : -Inf
+        return (τ::Vector{Float64}) -> any(τ .> 0.0) ? sum([log_prior_theta(θs[k], μ, τ, φ, p.ischild[k]) for k in 1:J]) + log_prior_tau(τ) : -Inf
     end
     if j == J+4
         μ = θs[J+2]
@@ -130,7 +138,7 @@ function log_pdf(p::Posterior, θs::Vector{Vector{Float64}})
 
     value = 0.0
     for j = 1:J
-        value += log_ll(θs[j], σ, p.y[j]) + log_prior_theta(θs[j], μ, τ, φ, p.ischild[j])
+        value += log_ll(θs[j], σ, p.y[j],p.x[j]) + log_prior_theta(θs[j], μ, τ, φ, p.ischild[j])
     end
     value += + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ) + log_prior_phi(φ)
 
@@ -139,14 +147,29 @@ end
 
 
 J = length(y)
-posterior = Posterior(zlogy, ischild)
+posterior = Posterior(zlogy, ischild, zx)
 
 θs = Vector{Vector{Float64}}(undef,J+4)
 w = Vector{Vector{Float64}}(undef,J+4)
-for j in 1:J+4
-    θs[j] = rand(1)
-    w[j] = ones(1)
+for j in 1:J
+    θs[j] = rand(2)
+    w[j] = ones(2)
 end
+j = J+1
+θs[j] = rand(1)
+w[j] = ones(1)
+
+j = J+2
+θs[j] = rand(2)
+w[j] = ones(2)
+
+j = J+3
+θs[j] = rand(2)
+w[j] = ones(2)
+
+j = J+4
+θs[j] = rand(2)
+w[j] = ones(2)
 
 log_pdf2(θs) = log_pdf(posterior,θs)
 log_pdf2(θs::Vector{Vector{Float64}}, θ::Vector{Float64}, j::Int64) = log_pdf(posterior,θs,θ,j)
@@ -232,8 +255,8 @@ xlabel(raw"$\varphi$")
 tight_layout()
 
 figure()
-pval = sum(exp.(phi2_samp) .> 1)/N
 ABDA.hist(exp.(phi2_samp), label=(raw"$\mathrm{Pr}\{\mathrm{exp}(\varphi)>1\} = $"*string(pval)))
+pval = sum(exp.(phi2_samp) .> 1)/N
 xlabel(raw"$\mathrm{exp}(\varphi)$")
 title("kid's mutiplicative effect on average reaction time")
 legend()

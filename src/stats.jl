@@ -894,14 +894,20 @@ end
 function hist(x,bins=0;color = "k",baseline = 0, label=nothing)
     if bins == 0
         bins=Int(round(sqrt(length(x))))
+        hist_data = fit(Histogram,x,nbins=bins)
+    else
+        hist_data = fit(Histogram,x,bins)
     end
+
     ci = hdi(x)
     #fr, bins = np.histogram(x,bins,normed = true)
     #fr, bins = PyPlot.hist(x,bins;density = true, show=false)
-    hist_data = fit(Histogram,x,nbins=bins)
+    # hist_data = fit(Histogram,x,bins)
     fr,bins = hist_data.weights, hist_data.edges[1]
+    dbin = bins[2]-bins[1]
+    N = sum(fr)
     #plt["hist"](mu_y_samp[i,:],100,alpha=0.5)
-    xv,yv = get_mystep(bins,fr)
+    xv,yv = get_mystep(bins,fr./N/dbin)
     fill_between(xv,yv .+ baseline, baseline, color=color,alpha=0.25,label=label)
 
     ind = (xv.>ci[1]).*(xv.<ci[2])

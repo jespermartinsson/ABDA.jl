@@ -19,7 +19,7 @@ for j in 1:J
     n = 10
     X = hcat(ones(n), collect(1:n), collect(1:n).^2)
     β = [5,5,1] .+ [1,1,0.1].*randn(3)
-    σ = 1
+    σ = 1.1
     y = X*β .+ σ*randn(n)
 
     push!(ys,y)
@@ -208,6 +208,6 @@ end
 
 for b in J+1:length(xs1)
 figure()
-plot(xs1[b]',"k-",alpha=0.2)
-plot(xs2[b]',"r-",alpha=0.2)
+plot(collect(xs1[b]'),"k-",alpha=0.2)
+plot(collect(xs2[b]'),"r-",alpha=0.2)
 end

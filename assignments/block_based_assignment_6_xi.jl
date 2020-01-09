@@ -40,25 +40,33 @@ end
 
 
 
-function log_ll(θ::Vector{Float64}, σ::Vector{Float64}, y::Vector{Float64})
+function log_ll(ξ::Vector{Float64}, μ::Vector{Float64}, τ::Vector{Float64}, σ::Vector{Float64}, y::Vector{Float64})
     if σ[1] <= 0.0
         return -Inf
     else
+        θ = μ .+ ξ.*τ
+
         ε = y .- θ[1]
         return -length(ε)*log(σ[1]) - 0.5*ε'ε/σ[1]^2
     end
 end
 
 
-function log_prior_theta(θ::Vector{Float64}, μ::Vector{Float64}, τ::Vector{Float64}, φ::Vector{Float64}, ischild::Int64)
-    if τ[1] <= 0.0
-        return -Inf
-    else
-        μ_θ = μ[1] + φ[1]*ischild
-        ε = (θ .- μ_θ)./τ[1]
-        return sum(-log(τ[1]) .- 0.5 .* ε.^2)
-    end
+# function log_prior_theta(θ::Vector{Float64}, μ::Vector{Float64}, τ::Vector{Float64}, φ::Vector{Float64}, ischild::Int64)
+#     if τ[1] <= 0.0
+#         return -Inf
+#     else
+#         μ_θ = μ[1] + φ[1]*ischild
+#         ε = (θ .- μ_θ)./τ[1]
+#         return sum(-log(τ[1]) .- 0.5 .* ε.^2)
+#     end
+# end
+
+
+function log_prior_xi(ξ::Vector{Float64})
+   return - 0.5 * ξ'*ξ
 end
+
 
 function log_prior_sigma(σ::Vector{Float64})
     if σ[1] <= 0.0
@@ -95,44 +103,57 @@ function log_pdf(p::Posterior, θs::Vector{Vector{Float64}}, j::Int64)::Function
     J = length(p.y)
     if 1 <= j <= J
         σ = θs[J+1]
-        μ = θs[J+2]
-        τ = θs[J+3]
-        φ = θs[J+4]
-        return (θ::Vector{Float64}) -> log_ll(θ, σ, p.y[j]) + log_prior_theta(θ, μ, τ, φ, p.ischild[j]) + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ) + log_prior_phi(φ)
+        φ0 = θs[J+2]
+        φ1 = θs[J+3]
+        τ = θs[J+4]
+        μ = φ0 .+ φ1.*p.ischild[j]
+        return (ξ::Vector{Float64}) -> log_ll(ξ, μ, τ, σ, p.y[j]) + log_prior_xi(ξ) + log_prior_sigma(σ) + log_prior_tau(τ) + log_prior_phi(φ0) + log_prior_phi(φ1)
     end
     if j == J+1
-        return (σ::Vector{Float64}) -> sum([log_ll(θs[k], σ, p.y[k]) for k in 1:J]) + log_prior_sigma(σ)
+        #σ = θs[J+1]
+        φ0 = θs[J+2]
+        φ1 = θs[J+3]
+        τ = θs[J+4]
+        return (σ::Vector{Float64}) -> sum([log_ll(θs[k], φ0 .+ φ1.*p.ischild[k], τ, σ, p.y[k]) + log_prior_xi(θs[k]) for k in 1:J]) + log_prior_sigma(σ)
     end
     if j == J+2
-        τ = θs[J+3]
-        φ = θs[J+4]
-        return (μ::Vector{Float64}) -> sum([log_prior_theta(θs[k], μ, τ, φ, p.ischild[k]) for k in 1:J]) + log_prior_mu(μ)
+        σ = θs[J+1]
+        #φ0 = θs[J+2]
+        φ1 = θs[J+3]
+        τ = θs[J+4]
+        return (φ0::Vector{Float64}) -> sum([log_ll(θs[k], φ0 .+ φ1.*p.ischild[k], τ, σ, p.y[k]) + log_prior_xi(θs[k]) for k in 1:J]) + log_prior_phi(φ0)
     end
     if j == J+3
-        μ = θs[J+2]
-        φ = θs[J+4]
-        return (τ::Vector{Float64}) -> τ[1] > 0.0 ? sum([log_prior_theta(θs[k], μ, τ, φ, p.ischild[k]) for k in 1:J]) + log_prior_tau(τ) : -Inf
+        σ = θs[J+1]
+        φ0 = θs[J+2]
+        #φ1 = θs[J+3]
+        τ = θs[J+4]
+        return (φ1::Vector{Float64}) -> sum([log_ll(θs[k], φ0 .+ φ1.*p.ischild[k], τ, σ, p.y[k]) + log_prior_xi(θs[k]) for k in 1:J]) + log_prior_phi(φ1)
     end
     if j == J+4
-        μ = θs[J+2]
-        τ = θs[J+3]
-        return (φ::Vector{Float64}) -> sum([log_prior_theta(θs[k], μ, τ, φ, p.ischild[k]) for k in 1:J]) + log_prior_phi(φ)
+        σ = θs[J+1]
+        φ0 = θs[J+2]
+        φ1 = θs[J+3]
+        #τ = θs[J+4]
+        return (τ::Vector{Float64}) -> any(τ .> 0.0) ? sum([log_ll(θs[k], φ0 .+ φ1.*p.ischild[k], τ, σ, p.y[k]) + log_prior_xi(θs[k]) for k in 1:J]) + log_prior_tau(τ) : -Inf
     end
 end
 
 
 function log_pdf(p::Posterior, θs::Vector{Vector{Float64}})
     J = length(p.y)
-    σ = θs[J+1]
-    μ = θs[J+2]
-    τ = θs[J+3]
-    φ = θs[J+4]
 
+    σ = θs[J+1]
+    φ0 = θs[J+2]
+    φ1 = θs[J+3]
+    τ = θs[J+4]
+        
     value = 0.0
     for j = 1:J
-        value += log_ll(θs[j], σ, p.y[j]) + log_prior_theta(θs[j], μ, τ, φ, p.ischild[j])
+        μ = φ0 .+ φ1.*p.ischild[j]
+        value += log_ll(θs[j], μ, τ, σ, p.y[j]) + log_prior_xi(θs[j]) 
     end
-    value += + log_prior_mu(μ) + log_prior_sigma(σ) + log_prior_tau(τ) + log_prior_phi(φ)
+    value += log_prior_sigma(σ) + log_prior_tau(τ) + log_prior_phi(φ0) + log_prior_phi(φ1)
 
     return value
 end
@@ -161,15 +182,21 @@ N = 100_000
 
 zeta_samp_block
 
-theta_samp = zeros(J,N)
-for j in 1:J
-    theta_samp[j,:] .= zeta_samp_block[j][1,:]
-end
-
 sigma_samp = zeta_samp_block[J + 1][1,:]
 mu_samp = zeta_samp_block[J + 2][1,:]
-tau_samp = zeta_samp_block[J + 3][1,:]
-phi_samp = zeta_samp_block[J + 4][1,:]
+phi_samp = zeta_samp_block[J + 3][1,:]
+tau_samp = zeta_samp_block[J + 4][1,:]
+
+xi_samp = zeros(J,N)
+theta_samp = zeros(J,N)
+for j in 1:J
+    xi_samp[j,:] .= zeta_samp_block[j][1,:]
+    theta_samp[j,:] .= mu_samp .+ tau_samp.*xi_samp[j,:]
+end
+
+
+
+
 
 # (ln(y)-my)/sy = theta + s*e
 # ln(y) = sy*(theta + s*e) + my
@@ -184,6 +211,7 @@ theta2_samp = std_logy .* theta_samp .+ mean_logy
 # mean value of log-normal pdf
 # https://en.wikipedia.org/wiki/Log-normal_distribution
 mu_y_samp = exp.(theta2_samp .+ repeat(sigma2_samp', size(theta2_samp, 1), 1).^2 ./ 2)
+mu_y_phi_samp = exp.(theta2_samp .+ repeat(sigma2_samp', size(theta2_samp, 1), 1).^2 ./ 2)
 
 
 
@@ -231,8 +259,9 @@ ABDA.hist(phi2_samp)
 xlabel(raw"$\varphi$")
 tight_layout()
 
-figure()
+
 pval = sum(exp.(phi2_samp) .> 1)/N
+figure()
 ABDA.hist(exp.(phi2_samp), label=(raw"$\mathrm{Pr}\{\mathrm{exp}(\varphi)>1\} = $"*string(pval)))
 xlabel(raw"$\mathrm{exp}(\varphi)$")
 title("kid's mutiplicative effect on average reaction time")

@@ -84,7 +84,7 @@ beta = ones(J + 4)
 #error()
 
 if run_mcmc
-    @time zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 10_0000; printing=true)
+    @time zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 100_000; printing=true)
 end
 
 
@@ -171,7 +171,7 @@ tight_layout()
 # y = exp(theta2)*exp(sigma2*e)
 
 sigma2_samp = std(logy) * sigma_samp
-theta2_samp = std(logy) * theta_samp + mean(logy)
+theta2_samp = std(logy) * theta_samp .+ mean(logy)
 
 mu_y_samp = exp.(theta2_samp + repeat(sigma2_samp', size(theta2_samp, 1), 1).^2 / 2)
 
