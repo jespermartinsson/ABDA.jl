@@ -112,6 +112,7 @@ beta = ones(2*J+7)
 
 if run_mcmc
     @time zeta_samp, lp = sample(beta, ones(length(beta)), logpost, 100_000; printing=true)
+    #@time zeta_samp, lp = slice_sample(beta, ones(length(beta)), logpost, 100_000; printing=true)
 end
 
 
@@ -471,3 +472,19 @@ plt["tight_layout"]()
 
 # mu = exp((theta0+phi0*c) + (theta1+phi1*c)*x + 0.5s^2) 
 # mu = exp(phi0*c) * exp(phi1*c*x) * exp((theta0 + theta1*x + 0.5s^2) 
+
+figure(), 
+subplot(211),
+plot(Array(eta0_samp'))
+ylabel(raw"$\eta_0$")
+xlabel(raw"sample")
+xlim([5000,5200])
+subplot(212),
+plot(Array(eta1_samp'))
+ylabel(raw"$\eta_1$")
+xlabel(raw"sample")
+xlim([5000,5200])
+tight_layout()
+
+println("ABDA.ess(eta0_samp): ",ABDA.ess(eta0_samp))
+println("ABDA.ess(eta1_samp): ",ABDA.ess(eta1_samp))
