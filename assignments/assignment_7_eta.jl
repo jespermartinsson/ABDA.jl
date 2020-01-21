@@ -387,6 +387,15 @@ mu0_samp = repeat(b00_samp,1,J)' .+ repeat(b01_samp,1,J)'.*repeat(child_j,1,size
 mu1_samp = repeat(b10_samp,1,J)' .+ repeat(b11_samp,1,J)'.*repeat(child_j,1,size(b11_samp,1))
 
 
+phi0_samp = b01_samp
+phi1_samp = b11_samp
+
+phi02_samp = std(logy).*phi0_samp .- std(logy)/std(x)*mean(x).*phi1_samp
+phi12_samp = std(logy)/std(x).*phi1_samp
+
+
+
+
 subplot(122)
 ABDA.hist(std(logy)*tau0_samp)
 xlabel(string("\$\\tau_0\$"))
@@ -423,3 +432,42 @@ subplot(122)
 ABDA.hist(std(logy)*sigma_samp)
 xlabel(string("\$\\sigma\$"))
 plt["tight_layout"]()
+
+
+
+
+figure()
+subplot(121)
+ABDA.hist(phi02_samp)
+xlabel(string("\$\\varphi_0 = std(logy)\\tilde{\\varphi}_0 - \\tilde{\\varphi}_1 std(logy)mean(x)/std(x)\$"))
+plt["tight_layout"]()
+subplot(122)
+ABDA.hist(phi12_samp)
+xlabel(string("\$\\varphi_1 = std(logy)/std(x)\\tilde{\\varphi}_1\$"))
+plt["tight_layout"]()
+
+figure()
+subplot(121)
+ABDA.hist(exp.(phi02_samp))
+xlabel(string("\$\\exp(\\varphi_0)\$"))
+plt["tight_layout"]()
+subplot(122)
+ABDA.hist(exp.(phi12_samp))
+xlabel(string("\$\\exp(\\varphi_1)\$"))
+plt["tight_layout"]()
+
+
+figure()
+subplot(121)
+ABDA.hist(phi0_samp)
+xlabel(string("\$\\tilde{\\varphi}_0\$"))
+plt["tight_layout"]()
+subplot(122)
+ABDA.hist(phi1_samp)
+xlabel(string("\$\\tilde{\\varphi}_1\$"))
+plt["tight_layout"]()
+
+
+
+# mu = exp((theta0+phi0*c) + (theta1+phi1*c)*x + 0.5s^2) 
+# mu = exp(phi0*c) * exp(phi1*c*x) * exp((theta0 + theta1*x + 0.5s^2) 
