@@ -70,26 +70,45 @@ const y, dy = parse_data(string)
 # https://www.researchgate.net/publication/40823662_Modeling_the_Cumulative_Cases_from_SARS
 # https://www.maa.org/book/export/html/115630
 
-# dy/dt = r/M*y*(M-y)
-# y = M*y0/(y0 + (M-y0)*exp(-r*t))
 
-# The derivative
-# dy/dt = -M*y0/(y0 + (M-y0)*exp(-r*t))^2 * (M-y0)*exp(-r*t)*(-r)
-# dy/dt = M*y0*(M-y0)*r*exp(-r*t)/(y0 + (M-y0)*exp(-r*t))^2 
+function model!(y::Vector{Float64},dy::Vector{Float64},theta::Vector{Float64})
+    y0, r, M = theta
+    y[1] = y0 + r/M*y0*(M-y0)
+    dy[1] = r/M*y0*(M-y0)
+    b = 1
+    for i = 2:length(y)
+        dy[i] = (r/M)^b*abs(y[i-1])^b*(M^b-abs(y[i-1])^b)
+        y[i] = y[i-1] + dy[i]
+    end
+
+    return y, dy 
+end
 
 
+
+n = 180
+y_hat = zeros(n)
+dy_hat = zeros(n)
+theta = [100, 0.15, 60_000.0]
+model!(y_hat,dy_hat,theta)
+
+figure()
+plot(1:n,y_hat)
+plot(1:n,dy_hat)
+
+error()
 # log-likelihood Poisson distribution
-function log_likelihood(θ::Vector{Float64},dy::Vector{Float64})
-    α, μ, σ, a = θ
-    t = 1:length(dy)
-    λ = α.*(exp.(.-(t .- μ)./σ)./(σ.*(1 .+ exp.(.-(t .- μ)./σ)).^2))
-    if any(λ .<= 0) || any(θ .<= 0) || a <= 0.0
+function log_likelihood(θ::Vector{Float64},dy::Vector{Float64}, λ, dλ)
+    y0, r, M, a = θ
+    if any(θ .<= 0) || M <= y0 || r >= 1
         return -Inf
     else
+        model!(λ, dλ, θ)  
         #return sum(loggamma.(dy .+ 1 ./ a) .- (loggamma.(dy .+ 1) .- loggamma.(1 ./ a)) .+ dy.*(log.(a .* λ) .- log.(1 .+ a .* λ)) .+ (-1 ./ a).*log.(1 .+ a .* λ)) 
-        return sum(loggamma.(dy .+ 1 ./ a) .- loggamma.(1 ./ a) .- loggamma.(dy .+ 1) .- (1 ./ a).*log.(1 .+ a .* λ) .- dy.*log.(1 .+ a.*λ) .+ dy.*log.(a) .+ dy.*log.(λ)) 
+        return sum(loggamma.(dy .+ 1 ./ a) .- loggamma.(1 ./ a) .- loggamma.(dy .+ 1) .- (1 ./ a).*log.(1 .+ a .* dλ) .- dy.*log.(1 .+ a.*dλ) .+ dy.*log.(a) .+ dy.*log.(dλ)) 
     end
 end
+
 
 
 function rp2λa(r,p)
@@ -106,22 +125,35 @@ end
 
 # log prior
 function log_prior(θ::Vector{Float64})
-    α, μ, σ, a = θ
-    if α .<= 0.0 || μ .<= 0.0 || σ .<= 0.0 || a <= 0.0 
+    y0, r, M, a = θ
+    if any(θ .<= 0.0) || M <= y0
         return -Inf
     else
         m,s = 55e3,55e3
-        return -0.5*((α-m)/s).^2
+        return -0.5*((M-m)/s).^2
     end
 end
 
 # log posterior
-log_posterior(θ::Vector{Float64}) = log_likelihood(θ,dy) + log_prior(θ)
+λ, dλ = similar(y),similar(dy)
+log_posterior(θ::Vector{Float64}) = log_likelihood(θ,dy, λ, dλ) + log_prior(θ)
 
 
 
 ## sample the posterior
-θ = [55_000,14,3.5,100.5]
+θ = [y[1], 0.2, 60_000.0, 0.1]
+
+n = 50
+y_hat = zeros(n)
+dy_hat = zeros(n)
+model!(y_hat,dy_hat,θ)
+
+figure()
+plot(1:n,y_hat)
+plot(1:n,dy_hat)
+
+
+
 N_burn_in  = 10_000
 θ_samp, lps = ABDA.sample(copy(θ), 0.3*abs.(θ), log_posterior, 1_010_000, N_burn_in; printing=true)
 #θ_samp, lps = ABDA.slice_sample(copy(θ), 0.1*ones(length(θ)), log_posterior, 20_000; printing=true)
@@ -148,8 +180,8 @@ dy_pred = zeros(length(ks),length(ns))
 for n in ns
     i = 1
     for k in ks
-        α, μ, σ, a = θ_samp[:,k]
-        λ = α.*(exp.(.-(t[n] .- μ)./σ)./(σ.*(1 .+ exp.(.-(t[n] .- μ)./σ)).^2))
+        y0, r, M, a = θ_samp[:,k]
+        λ = M.*y0.*(M .- y0).*r.*exp.( -r.*t[n]) ./ (y0 .+ (M .- y0).*exp.(-r.*t[n])).^2 
         r,p = λa2rp(λ,a)
         dy_pred[i,n] = rand(NegativeBinomial(r,1-p))
         i +=1
@@ -157,42 +189,44 @@ for n in ns
 end
 
 
-if true
-    y_pred = zeros(length(ks),length(ns)) 
-    y_pred[:,1] .= y[1] 
-    for i in 1:length(ks)
-        for n in 2:length(t)
+y_rep = zeros(length(ks),length(ns)) 
+y_rep[:,1] .= y[1] 
+for i in 1:length(ks)
+    for n in 2:length(t)
+        y_rep[i,n] = y_rep[i,n-1] + dy_pred[rand(1:length(ks)),n] 
+    end
+end
+
+
+y_0 = y[1]- dy[1]
+y_pred = zeros(length(ks),length(ns)) 
+n0 = length(dy)
+for i in 1:length(ks)
+    y_pred[i,1] = y_0 + dy_pred[rand(1:length(ks)),1]
+    for n in 2:length(t)
+        if n<=n0
+            samp = 0.0
+            while true
+                samp = y_pred[i,n-1] + dy_pred[rand(1:length(ks)),n]
+                if samp >= y[n]
+                    break
+                end
+            end
+            y_pred[i,n] = samp
+        else
             y_pred[i,n] = y_pred[i,n-1] + dy_pred[rand(1:length(ks)),n] 
         end
     end
-else
-    y_0 = y[1]- dy[1]
-    y_pred = zeros(length(ks),length(ns)) 
-    n0 = length(dy)
-    for i in 1:length(ks)
-        y_pred[i,1] = y_0 + dy_pred[rand(1:length(ks)),1]
-        for n in 2:length(t)
-            if n<=n0
-                samp = 0.0
-                while true
-                    samp = y_pred[i,n-1] + dy_pred[rand(1:length(ks)),n]
-                    if samp >= y[n]
-                        break
-                    end
-                end
-                y_pred[i,n] = samp
-            else
-                y_pred[i,n] = y_pred[i,n-1] + dy_pred[rand(1:length(ks)),n] 
-            end
-        end
-    end
-  
 end
+
+
 
 
 ABDA.hdi(θ_samp)
 
-string = raw"Feb. 10
+string = raw"Feb. 11
+45,170	2,071	5%
+Feb. 10
 43,099	2,546	6%
 Feb. 9
 40,553	3,001	8%
@@ -240,20 +274,33 @@ y_new, dy_new = parse_data(string)
 
 
 
-ci = Array(ABDA.hdi(y_pred')')
-m = mean(y_pred,dims=1)
+
+ci_rep = Array(ABDA.hdi(y_rep')')
+m_rep = mean(y_rep,dims=1)
+
+ci_pred = Array(ABDA.hdi(y_pred')')
+m_pred = mean(y_pred,dims=1)
 
 figure()
 subplot(311)
 plot(1:length(y),y,"ko")
 ind = length(y)+1:length(y_new)
 plot(ind,y_new[ind],"rs")
-plot(t,m[:],"k-")
-plot(t,ci[:,1],"k--")
-plot(t,ci[:,2],"k--")
+
+plot(t,m_rep[:],"k-", label="prediction")
+fill_between(t,ci_rep[:,1],ci_rep[:,2],color="k", alpha=0.2)
+#plot(t,ci_rep[:,1],"k--")
+#plot(t,ci_rep[:,2],"k--")
+
+plot(t,m_pred[:],"r-", label="step ahead prediction")
+fill_between(t,ci_pred[:,1],ci_pred[:,2],color="r", alpha=0.2)
+#plot(t,ci_pred[:,1],"b--")
+#plot(t,ci_pred[:,2],"b--")
+legend()
 xlabel("days")
 ylabel("infected")
 grid("on")
+
 
 ci = Array(ABDA.hdi(dy_pred')')
 m = mean(dy_pred,dims=1)
@@ -270,21 +317,17 @@ ylabel("infected per day")
 grid("on")
 
 subplot(313)
-ABDA.hist(θ_samp[1,:],40e3:2e2:80e3,color="k")
-xlim([40e3, 80e3])
-xlabel("total infected")
+ABDA.hist(θ_samp[3,:].*1e-3,40:0.2:80,color="k")
+xlim([40, 80])
+xlabel(raw"total infected ($\times 1000$)")
 yticks([])
 
 tight_layout()
 
 
 figure()
-ABDA.hist(1 ./ θ_samp[3,:],color="k")
+ABDA.hist(θ_samp[2,:],color="k")
 xlabel("rate of growth")
 yticks([])
-
-
-
-
 
 

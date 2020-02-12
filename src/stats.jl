@@ -386,7 +386,7 @@ end
 
 
 
-function fslice!(x0, l, r, x1, log_pdf, log_pdf_x1, w, E; m = 1e2)
+function fslice!(x0, l, r, x1, log_pdf, log_pdf_x1, w, E; m=1e2, max_iter=1000)
     D = length(x0)
     evals = 0
     for d in randperm(D)
@@ -412,12 +412,17 @@ function fslice!(x0, l, r, x1, log_pdf, log_pdf_x1, w, E; m = 1e2)
             r .= r .+ wd
             k -= 1
         end
+
+        iter = 1
         while true
             u2 = rand()
             x1 .= l .+ u2.*(r .- l)
             log_pdf_x1 = log_pdf(x1)
-            # println(y, " ", log_pdf_x1)
-
+            if iter > max_iter
+                println("")
+                @warn " => fslice! got stuck with y: $y, log_pdf_x1: $log_pdf_x1, x0: $x0, x1: $x1"
+                break
+            end
             evals += 1
             if (y <= log_pdf_x1)
                 x0 .= 1*x1
@@ -428,8 +433,8 @@ function fslice!(x0, l, r, x1, log_pdf, log_pdf_x1, w, E; m = 1e2)
             else
                 l .= 1*x1
             end
+            iter += 1
         end
-
     end
     return log_pdf_x1
 end
