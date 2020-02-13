@@ -257,61 +257,65 @@ m_rep = mean(y_rep,dims=1)
 ci_pred = Array(ABDA.hdi(y_pred')')
 m_pred = mean(y_pred,dims=1)
 
+ci = Array(ABDA.hdi(dy_pred')')
+m = mean(dy_pred,dims=1)
+
+
+ind = length(y)+1:length(y_new)
+
 figure()
 subplot(311)
+plot(1:length(dy),dy,"ko", label="data used in prediction")
+plot(ind,dy_new[ind],"rs", label="new data")
+#plot(d,dy_new2,"bd")
+
+plot(t,m[:],"k-", label="posterior preditive distribution")
+fill_between(t,ci[:,1],ci[:,2],color="k", alpha=0.2)
+xlabel("days")
+ylabel("infected per day")
+legend()
+grid("on")
+
+subplot(312)
 plot(1:length(y),y,"ko", label="data used in prediction")
-ind = length(y)+1:length(y_new)
 plot(ind,y_new[ind],"rs", label="new data")
-#plot(d,y_new2,"md",label="clinically diagnosed")
-
-plot(t,m_rep[:],"k-", label="prediction")
+plot(d,y_new2,"bd",label="clinically diagnosed")
+plot(t,m_rep[:],"k-", label="posterior preditive distribution")
 fill_between(t,ci_rep[:,1],ci_rep[:,2],color="k", alpha=0.2)
-
-
-#plot(t,m_pred[:],"r-", label="step ahead prediction")
-#fill_between(t,ci_pred[:,1],ci_pred[:,2],color="r", alpha=0.2)
-
 legend()
 xlabel("days")
 ylabel("infected")
 grid("on")
 
+subplot(313)
+plot(1:length(y),y,"ko", label="data used in prediction")
+ind = length(y)+1:length(y_new)
+plot(ind,y_new[ind],"rs", label="new data")
+plot(d,y_new2,"bd",label="clinically diagnosed")
+plot(t,m_pred[:],"b-", label="step ahead prediction")
+fill_between(t,ci_pred[:,1],ci_pred[:,2],color="b", alpha=0.2)
+legend()
+xlabel("days")
+ylabel("infected")
+grid("on")
+tight_layout()
 
-ci = Array(ABDA.hdi(dy_pred')')
-m = mean(dy_pred,dims=1)
+figure()
+subplot(311)
+ABDA.hist(θ_samp[1,:].*1e-3,color="k")
+xlabel(raw"$y_0$ -- cases at $t=0$ ($\times 1000$)")
+yticks([])
 
 subplot(312)
-grid("on")
-plot(1:length(dy),dy,"ko")
-plot(ind,dy_new[ind],"rs")
-#plot(d,dy_new2,"md")
-
-plot(t,m[:],"k-")
-plot(t,ci[:,1],"k--")
-plot(t,ci[:,2],"k--")
-xlabel("days")
-ylabel("infected per day")
-grid("on")
+ABDA.hist(θ_samp[2,:],color="k")
+xlabel(raw"$r$ -- growth")
+yticks([])
 
 subplot(313)
 ABDA.hist(θ_samp[3,:].*1e-3,40:0.2:80,color="k")
 xlim([40, 80])
-xlabel(raw"total infected ($\times 1000$)")
+xlabel(raw"$M$ -- endemic infected population ($\times 1000$)")
 yticks([])
-
 tight_layout()
 
-
-figure()
-ABDA.hist(θ_samp[2,:],color="k")
-xlabel("rate of growth")
-yticks([])
-
-
-
-
-figure()
-ABDA.hist(θ_samp[2,:],color="k")
-xlabel("rate of growth")
-yticks([])
 
