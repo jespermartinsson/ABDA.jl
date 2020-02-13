@@ -193,7 +193,9 @@ end
 
 ABDA.hdi(θ_samp)
 
-string = raw"Feb. 11
+string = raw"Feb. 12
+46,678	1,508	5%
+Feb. 11
 45,170	2,071	5%
 Feb. 10
 43,099	2,546	6%
@@ -237,7 +239,12 @@ Jan. 23
 y_new, dy_new = parse_data(string)
 
 
+string = "Feb. 12 
+60,326	15,407	34%"
 
+y_new2 = [60_326]
+dy_new2 = [15_156]
+d = [21] 
 
 
 
@@ -252,19 +259,18 @@ m_pred = mean(y_pred,dims=1)
 
 figure()
 subplot(311)
-plot(1:length(y),y,"ko")
+plot(1:length(y),y,"ko", label="data used in prediction")
 ind = length(y)+1:length(y_new)
-plot(ind,y_new[ind],"rs")
+plot(ind,y_new[ind],"rs", label="new data")
+#plot(d,y_new2,"md",label="clinically diagnosed")
 
 plot(t,m_rep[:],"k-", label="prediction")
 fill_between(t,ci_rep[:,1],ci_rep[:,2],color="k", alpha=0.2)
-#plot(t,ci_rep[:,1],"k--")
-#plot(t,ci_rep[:,2],"k--")
 
-plot(t,m_pred[:],"r-", label="step ahead prediction")
-fill_between(t,ci_pred[:,1],ci_pred[:,2],color="r", alpha=0.2)
-#plot(t,ci_pred[:,1],"b--")
-#plot(t,ci_pred[:,2],"b--")
+
+#plot(t,m_pred[:],"r-", label="step ahead prediction")
+#fill_between(t,ci_pred[:,1],ci_pred[:,2],color="r", alpha=0.2)
+
 legend()
 xlabel("days")
 ylabel("infected")
@@ -278,6 +284,8 @@ subplot(312)
 grid("on")
 plot(1:length(dy),dy,"ko")
 plot(ind,dy_new[ind],"rs")
+#plot(d,dy_new2,"md")
+
 plot(t,m[:],"k-")
 plot(t,ci[:,1],"k--")
 plot(t,ci[:,2],"k--")
