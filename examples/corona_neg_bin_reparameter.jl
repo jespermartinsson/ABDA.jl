@@ -193,58 +193,72 @@ end
 
 ABDA.hdi(θ_samp)
 
-string = raw"Feb. 12
-46,678	1,508	5%
-Feb. 11
+
+string = "Feb. 15 
+69,197	2,097	3%
+Feb. 14 
+67,100	2,663	4%
+Feb. 13 
+64,437	5,154	9%
+Feb. 12 
+59,283	14,113	31%
+Feb. 11 
 45,170	2,071	5%
-Feb. 10
+Feb. 10 
 43,099	2,546	6%
-Feb. 9
+Feb. 9 
 40,553	3,001	8%
-Feb. 8
+Feb. 8 
 37,552	2,676	8%
-Feb. 7
+Feb. 7 
 34,876	3,437	11%
-Feb. 6
+Feb. 6 
 31,439	3,163	11%
-Feb. 5
+Feb. 5 
 28,276	3,723	15%
-Feb. 4
+Feb. 4 
 24,553	3,925	19%
-Feb. 3
+Feb. 3 
 20,628	3,239	19%
-Feb. 2
-17,389	2,837	19%
-Feb. 1
-14,552	2,604	22%
-Jan. 31
+Feb. 2 
+17,389	2,838	20%
+Feb. 1 
+14,551	2,603	22%
+Jan. 31 
 11,948	2,127	22%
-Jan. 30
+Jan. 30 
 9,821	2,008	26%
-Jan. 29
+Jan. 29 
 7,813	1,755	29%
-Jan. 28
+Jan. 28 
 6,058	1,477	32%
-Jan. 27
+Jan. 27 
 4,581	1,781	64%
-Jan. 26
+Jan. 26 
 2,800	785	39%
-Jan. 25
+Jan. 25 
 2,015	698	53%
-Jan. 24
+Jan. 24 
 1,317	472	56%
-Jan. 23
-845	266	46%"
+Jan. 23 
+845	265	46%"
+y_new2, dy_new2 = parse_data(string)
 
-y_new, dy_new = parse_data(string)
 
+# 2,420 new cases (including 1,138 clinically diagnosed)
+# 4,823 new cases (including 3,095 clinically diagnosed)
+# Of the 14,840 cases added, 13,332 are due to the new classification while 1,508 are new cases.
 
-string = "Feb. 12 
-60,326	15,407	34%"
+dy_new = copy(dy_new2)
+clinically = [12605, 3095, 1138, 888]
+dy_new[end-length(clinically)+1:end] -= clinically
 
-y_new2 = [60_326]
-dy_new2 = [15_156]
-d = [21] 
+y_new = copy(y_new2)
+for n = 2:length(dy_new)
+    y_new[n] = y_new[n-1] + dy_new[n]
+end
+
+d = 21:length(y_new) 
 
 
 
@@ -279,7 +293,7 @@ grid("on")
 subplot(312)
 plot(1:length(y),y,"ko", label="data used in prediction")
 plot(ind,y_new[ind],"rs", label="new data")
-plot(d,y_new2,"bd",label="clinically diagnosed")
+plot(d,y_new2[d],"bd",label="clinically diagnosed")
 plot(t,m_rep[:],"k-", label="posterior preditive distribution")
 fill_between(t,ci_rep[:,1],ci_rep[:,2],color="k", alpha=0.2)
 legend()
@@ -291,7 +305,7 @@ subplot(313)
 plot(1:length(y),y,"ko", label="data used in prediction")
 ind = length(y)+1:length(y_new)
 plot(ind,y_new[ind],"rs", label="new data")
-plot(d,y_new2,"bd",label="clinically diagnosed")
+plot(d,y_new2[d],"bd",label="clinically diagnosed")
 plot(t,m_pred[:],"b-", label="step ahead prediction")
 fill_between(t,ci_pred[:,1],ci_pred[:,2],color="b", alpha=0.2)
 legend()
